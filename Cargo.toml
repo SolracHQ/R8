@@ -1,0 +1,12 @@
+[package]
+authors = ["CarlosEduardoL"]
+name = "r8"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env_logger = "0.10"
+sdl2 = { version = "0.35.2" }
+log = "0.4"
+egui = { version = "0.22.0", features = ["log"] }
+egui_sdl2_gl = { version = "0.22.1" }
