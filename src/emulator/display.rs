@@ -44,7 +44,7 @@ impl Display {
         let y_usize = y as usize;
         for bit_index in 0..u8::BITS as u8 {
             let x_usize = (x + bit_index) as usize % WIDTH;
-            let pixel = if (value & (0x80 >> bit_index)) != 0 { true } else { false };
+            let pixel = (value & (0x80 >> bit_index)) != 0;
             if !(self.vram[x_usize][y_usize] ^ pixel) && !pixel {
                 result = 1
             }

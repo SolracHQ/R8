@@ -103,8 +103,8 @@ impl Emulator {
         }
 
         let opcode = opcode::Opcode::new(
-            self.memory[self.PC.into()],
-            self.memory[(self.PC + 1).into()],
+            self.memory[self.PC],
+            self.memory[self.PC + 1],
         );
         debug!("{opcode}");
         let nibbles = opcode.nibbles();
@@ -202,27 +202,11 @@ impl Emulator {
             (0xA, _, _, _) => self.I = opcode.address(),
             // Jump to location nnn + V0.
             // The program counter is set to nnn plus the value of V0.
-            (0xB, _, _, _) => self.PC = opcode.address() + self.memory[0u8.into()] as u16,
+            (0xB, _, _, _) => self.PC = opcode.address() + self.V[0] as u16,
             // Set Vx = random byte AND kk.
             // The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk. The results are stored in Vx. See instruction 8xy2 for more information on AND.
             (0xC, x, _, _) => self.V[x as usize] = self.rand.next() & opcode.kk_byte(),
-            // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-            // The interpreter reads n bytes from memory, starting at the address stored in I.
-            // These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
-            // Sprites are XORed onto the existing screen. If this causes any pixels to be erased, VF is set to 1,
-            // otherwise it is set to 0. If the sprite is positioned so part of it is outside the coordinates of the display,
-            // it wraps around to the opposite side of the screen. See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
-            (0xD, x, y, n) => {
-                self.V[FLAGS_REGISTER] = 0;
-                let (x, y) = (self.V[x as usize], self.V[y as usize]);
-                for row in 0..n {
-                    self.V[FLAGS_REGISTER] |= self.display.set(
-                        x,
-                        y % display::HEIGHT as u8 + row,
-                        self.memory[(self.I + row as u16).into()],
-                    )
-                }
-            }
+            (0xD, x, y, n) => self.display_n_rows(x, y, n),
             // Skip next instruction if key with the value of Vx is pressed.
             // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the down position, PC is increased by 2.
             (0xE, x, 0x9, 0xE) => {
@@ -256,18 +240,35 @@ impl Emulator {
             (0xF, x, 0x2, 0x9) => self.I = self.V[x as usize] as Address * 5,
             // Store BCD representation of Vx in memory locations I, I+1, and I+2.
             (0xF, x, 0x3, 0x3) => {
-                self.memory[(self.I).into()] = self.V[x as usize] / 100;
-                self.memory[(self.I + 1).into()] = (self.V[x as usize] % 100) / 10;
-                self.memory[(self.I + 2).into()] = self.V[x as usize] % 10;
+                self.memory[self.I] = self.V[x as usize] / 100;
+                self.memory[self.I + 1] = (self.V[x as usize] % 100) / 10;
+                self.memory[self.I + 2] = self.V[x as usize] % 10;
             }
             // Store registers V0 through Vx in memory starting at location I.
             (0xF, x, 0x5, 0x5) => self.memory.read_range(self.I, &self.V[0..=x as _]),
             // Read registers V0 through Vx from memory starting at location I.
             (0xF, x, 0x6, 0x5) => self.memory.write_range(self.I, &mut self.V[0..=x as _]),
-            _ => {
-                error!("Unrecognized OpCode: {:X?}", opcode.nibbles())
-            }
+            _ => error!("Unrecognized OpCode: {:X?}", opcode.nibbles())
         }
         Ok(())
+    }
+
+    /**
+     * Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+     * The interpreter reads n bytes from memory, starting at the address stored in I.
+     * Sprites are XORed onto the existing screen. If this causes any pixels to be erased, VF is set to 1,
+     * otherwise it is set to 0. If the sprite is positioned so part of it is outside the coordinates of the display,
+     * it wraps around to the opposite side of the screen. See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
+     */
+    fn display_n_rows(&mut self, x: u8, y: u8, n: u8) {
+        self.V[FLAGS_REGISTER] = 0;
+        let (x, y) = (self.V[x as usize], self.V[y as usize]);
+        for row in 0..n {
+            self.V[FLAGS_REGISTER] |= self.display.set(
+                x,
+                y % display::HEIGHT as u8 + row,
+                self.memory[self.I + row as Address],
+            )
+        }
     }
 }
