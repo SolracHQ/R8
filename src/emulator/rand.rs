@@ -4,7 +4,7 @@ use std::num::Wrapping;
 fn get_epoch_micros() -> u128 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_or(5555u128, |d|d.as_micros())
+        .map_or(5555u128, |d| d.as_micros())
 }
 
 // Defining the structure for RandGen
@@ -18,7 +18,7 @@ pub struct RandGen {
 impl RandGen {
     // Function to initialize a new instance of RandGen
     pub fn new() -> Self {
-        let seed = get_epoch_micros();  // Using the current time as seed
+        let seed = get_epoch_micros(); // Using the current time as seed
         Self {
             multiplier: Wrapping(6364136223846793005),
             increment: Wrapping(1442695040888963407),

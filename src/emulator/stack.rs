@@ -42,3 +42,62 @@ impl Stack {
         self.top = 0;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        let stack = Stack::new();
+        assert!(stack.top == 0);
+        assert!(stack.array.iter().all(|&x| x == 0));
+    }
+
+    #[test]
+    fn test_push() {
+        let mut stack = Stack::new();
+        assert!(matches!(stack.push(1), Ok(())));
+        assert!(stack.top == 1);
+        assert!(stack.array[0] == 1);
+    }
+
+    #[test]
+    fn test_push_overflow() {
+        let mut stack = Stack::new();
+        for i in 0..STACK_SIZE {
+            assert!(matches!(stack.push(i as Address), Ok(())));
+        }
+        assert!(matches!(
+            stack.push(100),
+            Err(super::super::error::RuntimeError::StackOverFlow)
+        ));
+    }
+
+    #[test]
+    fn test_pop() {
+        let mut stack = Stack::new();
+        stack.push(1).unwrap();
+        assert!(matches!(stack.pop(), Ok(1)));
+        assert!(stack.top == 0);
+    }
+
+    #[test]
+    fn test_pop_underflow() {
+        let mut stack = Stack::new();
+        assert!(matches!(
+            stack.pop(),
+            Err(super::super::error::RuntimeError::StackUnderFlow)
+        ));
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut stack = Stack::new();
+        for i in 0..5 {
+            stack.push(i as Address).unwrap();
+        }
+        stack.clear();
+        assert!(stack.top == 0);
+    }
+}

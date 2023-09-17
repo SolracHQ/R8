@@ -11,6 +11,8 @@ mod memory;
 mod opcode;
 mod rand;
 mod stack;
+#[cfg(test)]
+mod tests;
 
 pub use display::{HEIGHT, WIDTH};
 
@@ -102,10 +104,7 @@ impl Emulator {
             self.delay_timer -= 1;
         }
 
-        let opcode = opcode::Opcode::new(
-            self.memory[self.PC],
-            self.memory[self.PC + 1],
-        );
+        let opcode = opcode::Opcode::new(self.memory[self.PC], self.memory[self.PC + 1]);
         debug!("{opcode}");
         let nibbles = opcode.nibbles();
         self.PC += 2;
@@ -248,7 +247,7 @@ impl Emulator {
             (0xF, x, 0x5, 0x5) => self.memory.read_range(self.I, &self.V[0..=x as _]),
             // Read registers V0 through Vx from memory starting at location I.
             (0xF, x, 0x6, 0x5) => self.memory.write_range(self.I, &mut self.V[0..=x as _]),
-            _ => error!("Unrecognized OpCode: {:X?}", opcode.nibbles())
+            _ => error!("Unrecognized OpCode: {:X?}", opcode.nibbles()),
         }
         Ok(())
     }
