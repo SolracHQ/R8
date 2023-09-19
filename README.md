@@ -13,3 +13,6 @@ I used the following sources to learn about CHIP-8 and implement the emulator:
 - [Wikipedia article on CHIP-8](https://en.wikipedia.org/wiki/CHIP-8)
 - [CHIP-8 Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)
 - [Mastering CHIP-8](https://github.com/mattmikolay/chip-8/wiki/Mastering-CHIP%E2%80%908)
+
+# ROMS
+- [Public Domain Roms](https://www.zophar.net/pdroms/chip8.html)
