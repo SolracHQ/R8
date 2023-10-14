@@ -4,6 +4,12 @@ pub const WIDTH: usize = 64;
 pub const HEIGHT: usize = 32;
 
 /// Represents the display of the Chip8 system.
+/// The display is a 64x32 monochrome display.
+///
+/// # Fields
+///
+/// * `vram` - A 2D array of booleans representing the video RAM of the display.
+/// * `updated` - Indicates whether the display has been updated. (to avoid redrawing the display when it hasn't changed)
 pub struct Display {
     /// The video RAM of the display.
     vram: [[bool; HEIGHT]; WIDTH],
@@ -13,6 +19,10 @@ pub struct Display {
 
 impl Display {
     /// Creates a new display.
+    ///
+    /// # Returns
+    ///
+    /// * `Display` - The display created.
     pub(super) fn new() -> Self {
         Self {
             vram: [[false; HEIGHT]; WIDTH],
@@ -21,6 +31,8 @@ impl Display {
     }
 
     /// Clears the display.
+    ///
+    /// Sets all pixels to false.
     pub(super) fn clear(&mut self) {
         self.updated = true;
         self.vram = [[false; HEIGHT]; WIDTH];
@@ -40,7 +52,7 @@ impl Display {
     pub fn set(&mut self, x: u8, mut y: u8, value: u8) -> u8 {
         self.updated = true;
         let mut result = 0;
-        y = y % HEIGHT as u8;
+        y %= HEIGHT as u8;
         let y_usize = y as usize;
         for bit_index in 0..u8::BITS as u8 {
             let x_usize = (x + bit_index) as usize % WIDTH;
@@ -53,6 +65,16 @@ impl Display {
         result
     }
 
+    /// Returns the value of a pixel.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The x-coordinate of the pixel.
+    /// * `y` - The y-coordinate of the pixel.
+    ///
+    /// # Returns
+    ///
+    /// * `bool` - The value of the pixel.
     pub fn get(&self, x: usize, y: usize) -> bool {
         self.vram[x][y]
     }

@@ -6,7 +6,10 @@ edition = "2021"
 
 [dependencies]
 env_logger = "0.10"
-sdl2 = { version = "0.35.2" }
+sdl2 = { version = "0.35.2", features = ["bundled"] }
 log = "0.4"
 egui = { version = "0.22.0", features = ["log"] }
-egui_sdl2_gl = { version = "0.22.1" }
+egui_sdl2_gl = { version = "0.22.1", features = ["sdl2_bundled"] }
+
+# [profile.release]
+# lto = true

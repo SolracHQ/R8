@@ -1,13 +1,23 @@
 use std::num::Wrapping;
 
-// Function to get the current time in microseconds since UNIX_EPOCH
+/// Function to get the current time in microseconds since UNIX_EPOCH
+/// 
+/// # Returns
+/// 
+/// * `u128` - The current time in microseconds since UNIX_EPOCH
 fn get_epoch_micros() -> u128 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(5555u128, |d| d.as_micros())
 }
 
-// Defining the structure for RandGen
+/// Struct to represent a pseudo-random number generator
+/// 
+/// # Fields
+/// 
+/// * `multiplier` - The multiplier for the linear congruential generator
+/// * `increment` - The increment for the linear congruential generator
+/// * `modulus` - The modulus for the linear congruential generator
 pub struct RandGen {
     multiplier: Wrapping<u128>,
     increment: Wrapping<u128>,
@@ -16,7 +26,11 @@ pub struct RandGen {
 }
 
 impl RandGen {
-    // Function to initialize a new instance of RandGen
+    /// Function to initialize a new instance of RandGen
+    /// 
+    /// # Returns
+    /// 
+    /// * `RandGen` - The new instance of RandGen
     pub fn new() -> Self {
         let seed = get_epoch_micros(); // Using the current time as seed
         Self {
@@ -27,9 +41,13 @@ impl RandGen {
         }
     }
 
-    // Function to generate the next pseudo-random number
+    /// Function to get the next random number
+    /// 
+    /// # Returns
+    /// 
+    /// * `u8` - The next random number
     pub fn next(&mut self) -> u8 {
         self.state = (self.multiplier * self.state + self.increment) % self.modulus;
-        self.state.0 as _
+        (self.state.0 >> 56) as u8
     }
 }
