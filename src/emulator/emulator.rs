@@ -1,24 +1,18 @@
-#![allow(non_snake_case)]
 use std::io::Read;
 
-use self::{error::EmulatorError, memory::Address};
 use log::{debug, error};
 
-mod display;
-pub mod error;
-mod keyboard;
-mod memory;
-mod opcode;
-mod rand;
-mod stack;
-#[cfg(test)]
-mod tests;
-
-pub use display::{HEIGHT, WIDTH};
-
-/// http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2
-/// Amount of V registers in the CHIP-8.
-pub const REGISTER_COUNT: usize = 0x10;
+use crate::{
+    bcd,
+    display::Display,
+    error::EmulatorError,
+    keyboard::KeyBoard,
+    memory::{Address, Memory},
+    opcode::Opcode,
+    rand::RandGen,
+    stack::Stack,
+    REGISTER_COUNT,
+};
 
 /// The index of the flags register in the V registers.
 const FLAGS_REGISTER: usize = 0xF;
@@ -48,20 +42,20 @@ pub enum State {
 /// * `state` - The state of the emulator.
 pub struct Emulator {
     // Registers
-    pc: memory::Address,
-    i: memory::Address,
-    v_registers: [u8; REGISTER_COUNT],
-    sound_timer: u8,
-    delay_timer: u8,
+    pub(crate) pc: Address,
+    pub(crate) i: Address,
+    pub(crate) v_registers: [u8; crate::REGISTER_COUNT],
+    pub(crate) sound_timer: u8,
+    pub(crate) delay_timer: u8,
     // Memory Segments
-    stack: stack::Stack<Address>,
-    memory: memory::Memory,
+    pub(crate) stack: Stack<Address>,
+    pub(crate) memory: Memory,
     // Devices
-    pub display: display::Display,
-    pub keyboard: keyboard::KeyBoard,
+    pub display: Display,
+    pub keyboard: KeyBoard,
     // Helper Structs
-    rand: rand::RandGen,
-    state: State,
+    pub(crate) rand: RandGen,
+    pub(crate) state: State,
 }
 
 impl Emulator {
@@ -72,16 +66,16 @@ impl Emulator {
     /// * `Emulator` - The newly created emulator.
     pub fn new() -> Self {
         Self {
-            pc: memory::Address::ENTRY_POINT,
-            i: memory::Address::new(0),
+            pc: Address::ENTRY_POINT,
+            i: Address::new(0),
             v_registers: [0; REGISTER_COUNT],
             sound_timer: 0,
             delay_timer: 0,
-            stack: stack::Stack::new(),
-            memory: memory::Memory::new(),
-            display: display::Display::new(),
-            keyboard: keyboard::KeyBoard::default(),
-            rand: rand::RandGen::new(),
+            stack: Stack::new(),
+            memory: Memory::new(),
+            display: Display::new(),
+            keyboard: KeyBoard::default(),
+            rand: RandGen::new(),
             state: State::New,
         }
     }
@@ -99,9 +93,9 @@ impl Emulator {
     /// # Notes
     ///
     /// * The emulator is reset to its initial state.
-    pub fn load_rom<R: Read>(&mut self, reader: R) -> Result<(), error::EmulatorError> {
-        self.pc = memory::Address::ENTRY_POINT;
-        self.i = memory::Address::new(0);
+    pub fn load_rom<R: Read>(&mut self, reader: R) -> Result<(), EmulatorError> {
+        self.pc = Address::ENTRY_POINT;
+        self.i = Address::new(0);
         self.delay_timer = 0;
         self.sound_timer = 0;
         self.v_registers = [0; REGISTER_COUNT];
@@ -124,31 +118,16 @@ impl Emulator {
     /// * If the emulator is in the `State::WaitingKey` state and the keyboard is not pressed, this function does nothing.
     /// * If the emulator is in the `State::WaitingKey` state and the keyboard is pressed, the state is changed to `State::Running`.
     pub fn tick(&mut self) -> Result<(), EmulatorError> {
-        // Helper Macros
-        macro_rules! jump_if {
-            ($op:tt, $x:expr, $y:expr) => {
-                if $x $op $y { self.pc.add_assign(2)?; }
-            };
-        }
-
-        macro_rules! V {
-            ($reg: expr) => {
-                self.v_registers[$reg as usize]
-            };
-        }
-
-        if let State::New = self.state {
-            return Ok(());
-        }
-
-        if let State::WaitingKey { x } = self.state {
-            match (0..=0xF).find(|key| self.keyboard.is_set(*key)) {
-                Some(key) => {
-                    V![x] = key;
-                    self.state = State::Running
-                }
-                None => return Ok(()),
+        match self.state {
+            State::New => return Ok(()),
+            State::WaitingKey { x } => {
+                let Some(key) = (0..=0xF).find(|&key| self.keyboard.is_set(key)) else {
+                    return Ok(());
+                };
+                self.v_registers[x as usize] = key;
+                self.state = State::Running;
             }
+            _ => {}
         }
 
         if self.sound_timer > 0 {
@@ -158,10 +137,52 @@ impl Emulator {
             self.delay_timer -= 1;
         }
 
-        let opcode = self.opcode()?;
+        let opcode = self.fetch_opcode()?;
 
         debug!("| 0x{PC:X} | {opcode}", PC = self.pc.inner());
+
+        self.execute_opcode(opcode)?;
+
+        Ok(())
+    }
+
+    /// Fetches the next opcode from memory.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Opcode, RuntimeError>` - The next opcode or an error if the opcode could not be fetched.
+    pub fn fetch_opcode(&self) -> Result<Opcode, EmulatorError> {
+        let mut opcode = [0, 0];
+        self.memory.write_range(self.pc, &mut opcode)?;
+        Ok(Opcode::new(opcode))
+    }
+
+    /// Executes an opcode (instruction) on the emulator.
+    ///
+    /// # Arguments
+    ///
+    /// * `opcode` - The opcode to execute.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), RuntimeError>` - () if the opcode was executed successfully or an error if the cpu encountered any problems.
+    pub fn execute_opcode(&mut self, opcode: Opcode) -> Result<(), EmulatorError> {
+        // Macro to jump if a condition is met
+        macro_rules! jump_if {
+            ($op:tt, $x:expr, $y:expr) => {
+                if $x $op $y { self.pc.add_assign(2)?; }
+            };
+        }
+        // Macro to facilitate access to the V registers
+        macro_rules! V {
+            ($reg: expr) => {
+                // Cehck reg is u8
+                self.v_registers[$reg as usize]
+            };
+        }
+
         let nibbles = opcode.nibbles();
+        // Increment the program counter by 2
         self.pc.add_assign(2)?;
 
         match nibbles {
@@ -268,7 +289,21 @@ impl Emulator {
                 // Set Vx = random byte AND kk. The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk.
                 V![x] = self.rand.next() & opcode.kk_byte()
             }
-            (0xD, x, y, n) => self.display_n_rows(x, y, n)?,
+            (0xD, x, y, n) => {
+                //  This instruction displays a sprite on the screen by reading n bytes from memory starting at address I and XORing
+                //  them onto the existing screen.
+                //  If any pixels are erased, VF is set to 1, otherwise it is set to 0.
+                //  If the sprite is positioned outside the screen, it wraps around to the opposite side.
+                V![FLAGS_REGISTER] = 0;
+                let (x, y) = (self.v_registers[x as usize], self.v_registers[y as usize]);
+                for row in 0..n {
+                    self.v_registers[FLAGS_REGISTER] |= self.display.set(
+                        x,
+                        y % crate::HEIGHT as u8 + row,
+                        self.memory[(self.i.inner() + row as u16).try_into()?],
+                    )
+                }
+            }
             (0xE, x, 0x9, 0xE) => {
                 // Skip next instruction if key with the value of Vx is pressed.
                 if self.keyboard.is_set(V![x]) {
@@ -308,7 +343,7 @@ impl Emulator {
             (0xF, x, 0x3, 0x3) => {
                 // Store BCD representation of Vx in memory locations I, I+1, and I+2.
                 self.memory
-                    .read_range(self.i, &BCD(self.v_registers[x as usize]))?
+                    .read_range(self.i, &bcd(self.v_registers[x as usize]))?
             }
             (0xF, x, 0x5, 0x5) => {
                 // Store registers V0 through Vx in memory starting at location I.
@@ -320,81 +355,21 @@ impl Emulator {
                 self.memory
                     .write_range(self.i, &mut self.v_registers[0..=x as _])?
             }
-            _ => error!(
-                "Unrecognized OpCode: | 0x{PC:X} | {:X?}",
-                opcode.nibbles(),
-                PC = self.pc.inner()
-            ),
+            _ => {
+                error!(
+                    "Unrecognized OpCode: | 0x{PC:X} | {:X?}",
+                    opcode.nibbles(),
+                    PC = self.pc.inner()
+                )
+            }
         }
-        Ok(())
-    }
 
-    pub fn opcode(&self) -> Result<opcode::Opcode, EmulatorError> {
-        let mut opcode = [0, 0];
-        self.memory.write_range(self.pc, &mut opcode)?;
-        Ok(opcode::Opcode::new(opcode))
-    }
-
-    /**
-     * Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-     * The interpreter reads n bytes from memory, starting at the address stored in I.
-     * Sprites are XORed onto the existing screen. If this causes any pixels to be erased, VF is set to 1,
-     * otherwise it is set to 0. If the sprite is positioned so part of it is outside the coordinates of the display,
-     * it wraps around to the opposite side of the screen. See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
-     */
-    fn display_n_rows(&mut self, x: u8, y: u8, n: u8) -> Result<(), EmulatorError> {
-        self.v_registers[FLAGS_REGISTER] = 0;
-        let (x, y) = (self.v_registers[x as usize], self.v_registers[y as usize]);
-        for row in 0..n {
-            self.v_registers[FLAGS_REGISTER] |= self.display.set(
-                x,
-                y % display::HEIGHT as u8 + row,
-                self.memory[(self.i.inner() + row as u16).try_into()?],
-            )
-        }
         Ok(())
     }
 }
 
-// Impl getters for debugging
-impl Emulator {
-    /// Returns the current program counter
-    pub fn pc(&self) -> Address {
-        self.pc
+impl Default for Emulator {
+    fn default() -> Self {
+        Self::new()
     }
-
-    /// Returns the current index register
-    pub fn i(&self) -> Address {
-        self.i
-    }
-    /// Returns the current value of the register
-    pub fn v_registers(&self) -> &[u8; REGISTER_COUNT] {
-        &self.v_registers
-    }
-
-    /// Returns the current value of the sound register
-    pub fn sound_timer(&self) -> u8 {
-        self.sound_timer
-    }
-
-    /// Returns the current value of the delay register
-    pub fn delay_timer(&self) -> u8 {
-        self.delay_timer
-    }
-    /// Returns an inmutable reference to the stack
-    pub fn stack(&self) -> &stack::Stack<Address> {
-        &self.stack
-    }
-    /// Return the current state of the emulator
-    pub fn state(&self) -> &State {
-        &self.state
-    }
-}
-
-// Helper Functions
-fn BCD(value: u8) -> [u8; 3] {
-    let hundreds = value / 100;
-    let tens = (value % 100) / 10;
-    let ones = value % 10;
-    [hundreds, tens, ones]
 }

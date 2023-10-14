@@ -85,6 +85,15 @@ where
     }
 }
 
+impl<T> Default for Stack<T>
+where
+    T: Copy + Default,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -38,6 +38,10 @@ impl Display {
         self.vram = [[false; HEIGHT]; WIDTH];
     }
 
+    pub fn grid(&self) -> impl Iterator<Item = bool> + '_ {
+        self.vram.iter().flatten().copied()
+    }
+
     /// Sets 8 pixels on the display.
     ///
     /// # Arguments

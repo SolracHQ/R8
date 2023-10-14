@@ -1,9 +1,10 @@
 use log::warn;
+use r8::{emulator::Emulator, HEIGHT, REGISTER_COUNT, WIDTH};
 use sdl2::keyboard::Keycode as K;
 
 const SCALE: u32 = 12;
 
-pub fn run(mut emulator: crate::emulator::Emulator) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
     let sdl_context = sdl2::init()?;
     let mut event_pump = sdl_context.event_pump()?;
     let video_subsystem = sdl_context.video()?;
@@ -21,8 +22,8 @@ pub fn run(mut emulator: crate::emulator::Emulator) -> Result<(), Box<dyn std::e
     let window = video_subsystem
         .window(
             "R8 - Chip8 Emulator",
-            SCALE * crate::emulator::WIDTH as u32 + 20,
-            crate::emulator::HEIGHT as u32 * SCALE + 150,
+            WIDTH as u32 * SCALE + 20,
+            HEIGHT as u32 * SCALE + 150,
         )
         .position_centered()
         .opengl()
@@ -31,7 +32,7 @@ pub fn run(mut emulator: crate::emulator::Emulator) -> Result<(), Box<dyn std::e
     let _ctx = window.gl_create_context()?;
     let egui_ctx = egui::Context::default();
 
-    // Set Adaptive VSync if available 
+    // Set Adaptive VSync if available
     match video_subsystem.gl_set_swap_interval(-1) {
         Ok(()) => (),
         Err(err) => {
@@ -46,8 +47,8 @@ pub fn run(mut emulator: crate::emulator::Emulator) -> Result<(), Box<dyn std::e
 
     // Create a texture for the emulator display
     let texture_id = painter.new_user_texture(
-        (crate::emulator::WIDTH, crate::emulator::HEIGHT),
-        &[egui::Color32::WHITE; crate::emulator::WIDTH * crate::emulator::HEIGHT],
+        (WIDTH, HEIGHT),
+        &[egui::Color32::WHITE; WIDTH * HEIGHT],
         false,
     );
 
@@ -78,16 +79,11 @@ pub fn run(mut emulator: crate::emulator::Emulator) -> Result<(), Box<dyn std::e
         }
 
         if emulator.display.updated {
-            let mut pixels = vec![];
-            for y in 0..crate::emulator::HEIGHT {
-                for x in 0..crate::emulator::WIDTH {
-                    pixels.push(match emulator.display.get(x, y) {
-                        true => FG_COLOR,
-                        false => BG_COLOR,
-                    })
-                }
-            }
-
+            let pixels = emulator
+                .display
+                .grid()
+                .map(|pixel| if pixel { FG_COLOR } else { BG_COLOR })
+                .collect::<Vec<_>>();
             emulator.display.updated = false;
             painter.update_user_texture_data(texture_id, &pixels);
         }
@@ -108,10 +104,7 @@ pub fn run(mut emulator: crate::emulator::Emulator) -> Result<(), Box<dyn std::e
                     ui.centered_and_justified(|ui| {
                         ui.image(
                             texture_id,
-                            egui::vec2(
-                                (SCALE * crate::emulator::WIDTH as u32) as _,
-                                (crate::emulator::HEIGHT as u32 * SCALE) as _,
-                            ),
+                            egui::vec2((SCALE * WIDTH as u32) as _, (HEIGHT as u32 * SCALE) as _),
                         )
                     })
                 });
@@ -125,11 +118,11 @@ pub fn run(mut emulator: crate::emulator::Emulator) -> Result<(), Box<dyn std::e
                     ui.label(format!("DT: 0x{:02X}", emulator.delay_timer()));
                     ui.label(format!("ST: 0x{:02X}", emulator.sound_timer()));
                     ui.label(format!("State: {:?}", emulator.state()));
-                    ui.label(format!("{}", emulator.opcode().unwrap()));
+                    ui.label(format!("{}", emulator.fetch_opcode().unwrap()));
                 });
 
                 // Print V registers on colums of 4
-                for i in (0..crate::emulator::REGISTER_COUNT).step_by(4) {
+                for i in (0..REGISTER_COUNT).step_by(4) {
                     ui.horizontal(|ui| {
                         for j in i..i + 4 {
                             ui.label(format!("V{:X}: 0x{:02X}", j, emulator.v_registers()[j]));
@@ -181,7 +174,7 @@ pub fn run(mut emulator: crate::emulator::Emulator) -> Result<(), Box<dyn std::e
 
 fn manage_events(
     event_pump: &mut sdl2::EventPump,
-    emulator: &mut crate::emulator::Emulator,
+    emulator: &mut Emulator,
     window: &sdl2::video::Window,
     painter: &mut egui_sdl2_gl::painter::Painter,
     egui_state: &mut egui_sdl2_gl::EguiStateHandler,
@@ -218,7 +211,7 @@ fn manage_events(
                 egui_sdl2_gl::input_to_egui(window, event, painter, egui_state);
             }
         }
-    };
+    }
     Ok(())
 }
 

@@ -6,7 +6,7 @@ R8 is a CHIP-8 emulator written in Rust, using [sdl2](https://www.libsdl.org/) a
 
 CHIP-8 is an interpreted programming language that was used to create games for some home computers in the 1970s and 1980s. It has a simple instruction set and graphics system, and it can run on various platforms with minimal changes.
 
-## What Works?
+## Current state
 
 - All opcodes are implemented
 - The display works
@@ -16,6 +16,13 @@ CHIP-8 is an interpreted programming language that was used to create games for 
 - The debugger works
 - The GUI works
 - The roms drag and drop works
+
+## Possible improvements
+
+- Add a menu to load roms (drag and drop is not very user friendly)
+- Add a menu to change the speed of the emulator (by default it runs at 60Hz)
+- Add a Wasm version
+- Add a disassembler and a assembler
 
 ## References
 

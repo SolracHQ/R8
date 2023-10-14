@@ -46,9 +46,9 @@ impl Opcode {
     }
 
     /// Extracts the lower 8 bits of the opcode.
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// * `u8` - The lower 8 bits of the opcode.
     pub fn kk_byte(&self) -> u8 {
         self.0 as u8
@@ -94,11 +94,7 @@ impl Display for Opcode {
             (0xF, x, 0x3, 0x3) => write!(f, "LD B, V{x:X}"),
             (0xF, x, 0x5, 0x5) => write!(f, "LD [I], V{x:X}"),
             (0xF, x, 0x6, 0x5) => write!(f, "LD V{x:X}, [I]"),
-            _ => write!(
-                f,
-                "0x{:X} 0x{:X} 0x{:X} 0x{:X}",
-                nibbles.0, nibbles.1, nibbles.2, nibbles.3
-            ),
+            _ => write!( f, "0x{:X} 0x{:X}",(self.0 >> 8) as u8, (self.0 & 0xFF) as u8),
         }
     }
 }

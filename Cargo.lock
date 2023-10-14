@@ -101,7 +101,6 @@ checksum = "a3aef8ec3ae1b772f340170c65bf27d5b8c28f543a0116c844d2ac08d01123e7"
 dependencies = [
  "ahash",
  "epaint",
- "log",
  "nohash-hasher",
 ]
 
@@ -147,7 +146,6 @@ dependencies = [
  "atomic_refcell",
  "ecolor",
  "emath",
- "log",
  "nohash-hasher",
  "parking_lot",
 ]
