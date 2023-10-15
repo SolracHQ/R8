@@ -39,7 +39,10 @@ impl Display {
     }
 
     pub fn grid(&self) -> impl Iterator<Item = bool> + '_ {
-        self.vram.iter().flatten().copied()
+        InvertIterator {
+            display: self,
+            current: (0, 0),
+        }
     }
 
     /// Sets 8 pixels on the display.
@@ -81,5 +84,28 @@ impl Display {
     /// * `bool` - The value of the pixel.
     pub fn get(&self, x: usize, y: usize) -> bool {
         self.vram[x][y]
+    }
+}
+
+struct InvertIterator<'a> {
+    display: &'a Display,
+    current: (usize, usize),
+}
+
+impl Iterator for InvertIterator<'_> {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (x, y) = self.current;
+        if x >= WIDTH {
+            self.current = (0, y + 1);
+        }
+        let (x, y) = self.current;
+        if y >= HEIGHT {
+            return None;
+        }
+        let result = self.display.get(x, y);
+        self.current = (x + 1, y);
+        Some(result)
     }
 }
