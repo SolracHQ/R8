@@ -10,19 +10,19 @@ use crate::{
     memory::{Address, Memory},
     opcode::Opcode,
     rand::RandGen,
-    stack::Stack,
-    REGISTER_COUNT,
+    register::{RegisterIndex, VRegisters},
+    stack::Stack, timer::Timer,
 };
 
 /// The index of the flags register in the V registers.
-const FLAGS_REGISTER: u8 = 0xF;
+const FLAGS_REGISTER: RegisterIndex = RegisterIndex::new(0xF);
 
 /// Represents the state of the emulator.
 #[derive(Debug)]
 pub enum State {
     New,
     Running,
-    WaitingKey { x: u8 },
+    WaitingKey { x: RegisterIndex },
 }
 
 /// The `Emulator` struct represents the CHIP-8 emulator.
@@ -44,9 +44,9 @@ pub struct Emulator {
     // Registers
     pub(crate) pc: Address,
     pub(crate) i: Address,
-    pub(crate) v_registers: [u8; crate::REGISTER_COUNT],
-    pub(crate) sound_timer: u8,
-    pub(crate) delay_timer: u8,
+    pub(crate) registers: VRegisters,
+    pub(crate) sound_timer: Timer,
+    pub(crate) delay_timer: Timer,
     // Memory Segments
     pub(crate) stack: Stack<Address>,
     pub(crate) memory: Memory,
@@ -68,9 +68,9 @@ impl Emulator {
         Self {
             pc: Address::ENTRY_POINT,
             i: Address::new(0),
-            v_registers: [0; REGISTER_COUNT],
-            sound_timer: 0,
-            delay_timer: 0,
+            registers: VRegisters::default(),
+            sound_timer: Timer::new(),
+            delay_timer: Timer::new(),
             stack: Stack::new(),
             memory: Memory::new(),
             display: Display::new(),
@@ -96,9 +96,9 @@ impl Emulator {
     pub fn load_rom<R: Read>(&mut self, reader: R) -> Result<(), EmulatorError> {
         self.pc = Address::ENTRY_POINT;
         self.i = Address::new(0);
-        self.delay_timer = 0;
-        self.sound_timer = 0;
-        self.v_registers = [0; REGISTER_COUNT];
+        self.delay_timer = Timer::new();
+        self.sound_timer = Timer::new();
+        self.registers = VRegisters::default();
         self.stack.clear();
         self.display.clear();
         self.memory.load_rom(reader)?;
@@ -124,18 +124,14 @@ impl Emulator {
                 let Some(key) = (0..=0xF).find(|&key| self.keyboard.is_set(key)) else {
                     return Ok(());
                 };
-                self.v_registers[x as usize] = key;
+                self.registers[x] = key;
                 self.state = State::Running;
             }
             _ => {}
         }
 
-        if self.sound_timer > 0 {
-            self.sound_timer -= 1;
-        }
-        if self.delay_timer > 0 {
-            self.delay_timer -= 1;
-        }
+        self.sound_timer.decrement();
+        self.delay_timer.decrement();
 
         // Fetch the opcode
         let opcode = self.fetch_opcode()?;
@@ -155,7 +151,7 @@ impl Emulator {
     pub fn fetch_opcode(&self) -> Result<Opcode, EmulatorError> {
         let mut opcode = [0, 0];
         self.memory.write_range(self.pc, &mut opcode)?;
-        Ok(opcode.into())
+        opcode.try_into()
     }
 
     /// Executes an opcode (instruction) on the emulator.
@@ -176,13 +172,16 @@ impl Emulator {
         }
         // Macro to facilitate access to the V registers
         macro_rules! V {
+            (0) => {
+                self.registers[RegisterIndex::new(0)]
+            };
             ($reg: expr) => {
                 // Cehck reg is u8
-                self.v_registers[$reg as usize]
+                self.registers[$reg]
             };
-            ($start: expr => $end: expr) => {
+            (0 => $end: expr) => {
                 // Cehck reg is u8
-                self.v_registers[$start as usize..=$end as usize]
+                self.registers[RegisterIndex::new(0)..=$end]
             };
         }
 
@@ -256,10 +255,10 @@ impl Emulator {
                     self.pc.add_assign(2)?;
                 }
             }
-            Opcode::LdVxDT { x } => V![x] = self.delay_timer,
+            Opcode::LdVxDT { x } => V![x] = self.delay_timer.get(),
             Opcode::LdVxK { x } => self.state = State::WaitingKey { x },
-            Opcode::LdDTVx { x } => self.delay_timer = V![x],
-            Opcode::LdSTVx { x } => self.sound_timer = V![x],
+            Opcode::LdDTVx { x } => self.delay_timer.set(V![x]),
+            Opcode::LdSTVx { x } => self.sound_timer.set(V![x]),
             Opcode::AddIVx { x } => self.i.add_assign(V![x] as u16)?,
             Opcode::LdFVx { x } => self.i = Address::new(V![x] as u16 * 5),
             Opcode::LdBVx { x } => self.memory.read_range(self.i, &bcd(V![x]))?,

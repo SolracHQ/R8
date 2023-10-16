@@ -7,6 +7,8 @@ mod memory;
 mod opcode;
 mod rand;
 mod stack;
+mod register;
+mod timer;
 #[cfg(test)]
 mod tests;
 pub mod emulator;
@@ -14,11 +16,20 @@ pub mod debug;
 
 pub use display::{HEIGHT, WIDTH};
 
-/// http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2
 /// Amount of V registers in the CHIP-8.
+/// 
+/// http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2
 pub const REGISTER_COUNT: usize = 0x10;
 
-// Helper Functions
+/// Translate a number to BCD.
+/// 
+/// # Arguments
+/// 
+/// * `value` - The value to translate.
+/// 
+/// # Returns
+/// 
+/// * `[u8; 3]` - The BCD representation of the value.
 fn bcd(value: u8) -> [u8; 3] {
     let hundreds = value / 100;
     let tens = (value % 100) / 10;

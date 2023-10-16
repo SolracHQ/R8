@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::{register::RegisterIndex, error::EmulatorError};
+
 use super::memory::Address;
 
 /// Represents a Chip-8 opcode.
@@ -27,63 +29,63 @@ pub enum Opcode {
     /// 0x3XNN - SE VX, NN
     ///
     /// Skip next instruction if VX == NN.
-    SeByte { x: u8, byte: u8 },
+    SeByte { x: RegisterIndex, byte: u8 },
     /// 0x4XNN - SNE VX, NN
     ///
     /// Skip next instruction if VX != NN.
-    SneByte { x: u8, byte: u8 },
+    SneByte { x: RegisterIndex, byte: u8 },
     /// 0x5XY0 - SE VX, VY
     ///
     /// Skip next instruction if VX == VY.
-    SeRegister { x: u8, y: u8 },
+    SeRegister { x: RegisterIndex, y: RegisterIndex },
     /// 0x6XNN - LD VX, NN
     ///
     /// Set VX = NN.
-    LdByte { x: u8, byte: u8 },
+    LdByte { x: RegisterIndex, byte: u8 },
     /// 0x7XNN - ADD VX, NN
     ///
     /// Set VX = VX + NN.
-    AddByte { x: u8, byte: u8 },
+    AddByte { x: RegisterIndex, byte: u8 },
     /// 0x8XY0 - LD VX, VY
     ///
     /// Set VX = VY.
-    LdRegister { x: u8, y: u8 },
+    LdRegister { x: RegisterIndex, y: RegisterIndex },
     /// 0x8XY1 - OR VX, VY
     ///
     /// Set VX = VX OR VY.
-    Or { x: u8, y: u8 },
+    Or { x: RegisterIndex, y: RegisterIndex },
     /// 0x8XY2 - AND VX, VY
     ///
     /// Set VX = VX AND VY.
-    And { x: u8, y: u8 },
+    And { x: RegisterIndex, y: RegisterIndex },
     /// 0x8XY3 - XOR VX, VY
     ///
     /// Set VX = VX XOR VY.
-    Xor { x: u8, y: u8 },
+    Xor { x: RegisterIndex, y: RegisterIndex },
     /// 0x8XY4 - ADD VX, VY
     ///
     /// Set VX = VX + VY, set VF = carry.
-    AddRegister { x: u8, y: u8 },
+    AddRegister { x: RegisterIndex, y: RegisterIndex },
     /// 0x8XY5 - SUB VX, VY
     ///
     /// Set VX = VX - VY, set VF = NOT borrow.
-    Sub { x: u8, y: u8 },
+    Sub { x: RegisterIndex, y: RegisterIndex },
     /// 0x8XY6 - SHR VX {, VY}
     ///
     /// Set VX = VX SHR 1.
-    Shr { x: u8 },
+    Shr { x: RegisterIndex },
     /// 0x8XY7 - SUBN VX, VY
     ///
     /// Set VX = VY - VX, set VF = NOT borrow.
-    Subn { x: u8, y: u8 },
+    Subn { x: RegisterIndex, y: RegisterIndex },
     /// 0x8XYE - SHL VX {, VY}
     ///
     /// Set VX = VX SHL 1.
-    Shl { x: u8 },
+    Shl { x: RegisterIndex },
     /// 0x9XY0 - SNE VX, VY
     ///
     /// Skip next instruction if VX != VY.
-    SneRegister { x: u8, y: u8 },
+    SneRegister { x: RegisterIndex, y: RegisterIndex },
     /// 0xANNN - LD I, NNN
     ///
     /// Set I = NNN.
@@ -95,81 +97,93 @@ pub enum Opcode {
     /// 0xCXNN - RND VX, NN
     ///
     /// Set VX = random byte AND NN.
-    Rnd { x: u8, byte: u8 },
+    Rnd { x: RegisterIndex, byte: u8 },
     /// 0xDXYN - DRW VX, VY, N
     ///
     /// Display N-byte sprite starting at memory location I at (VX, VY), set VF = collision.
-    Drw { x: u8, y: u8, n: u8 },
+    Drw { x: RegisterIndex, y: RegisterIndex, n: u8 },
     /// 0xEX9E - SKP VX
     ///
     /// Skip next instruction if key with the value of VX is pressed.
-    Skp { x: u8 },
+    Skp { x: RegisterIndex },
     /// 0xEXA1 - SKNP VX
     ///
     /// Skip next instruction if key with the value of VX is not pressed.
-    Sknp { x: u8 },
+    Sknp { x: RegisterIndex },
     /// 0xFX07 - LD VX, DT
     ///
     /// Set VX = delay timer value.
-    LdVxDT { x: u8 },
+    LdVxDT { x: RegisterIndex },
     /// 0xFX0A - LD VX, K
     ///
     /// Wait for a key press, store the value of the key in VX.
-    LdVxK { x: u8 },
+    LdVxK { x: RegisterIndex },
     /// 0xFX15 - LD DT, VX
     ///
     /// Set delay timer = VX.
-    LdDTVx { x: u8 },
+    LdDTVx { x: RegisterIndex },
     /// 0xFX18 - LD ST, VX
     ///
     /// Set sound timer = VX.
-    LdSTVx { x: u8 },
+    LdSTVx { x: RegisterIndex },
     /// 0xFX1E - ADD I, VX
     ///
     /// Set I = I + VX.
-    AddIVx { x: u8 },
+    AddIVx { x: RegisterIndex },
     /// 0xFX29 - LD F, VX
     ///
     /// Set I = location of sprite for digit VX.
-    LdFVx { x: u8 },
+    LdFVx { x: RegisterIndex },
     /// 0xFX33 - LD B, VX
     ///
     /// Store BCD representation of VX in memory locations I, I+1, and I+2.
-    LdBVx { x: u8 },
+    LdBVx { x: RegisterIndex },
     /// 0xFX55 - LD [I], VX
     ///
     /// Store registers V0 through VX in memory starting at location I.
-    LdIVx { x: u8 },
+    LdIVx { x: RegisterIndex },
     /// 0xFX65 - LD VX, [I]
     ///
     /// Read registers V0 through VX from memory starting at location I.
-    LdVxI { x: u8 },
+    LdVxI { x: RegisterIndex },
     /// Invalid opcode.
     Invalid(u16),
 }
 
-impl From<[u8; 2]> for Opcode {
+impl TryFrom<[u8; 2]> for Opcode {
+
+    type Error = EmulatorError;
+    
     /// Converts a 2-byte array into an opcode.
     /// 
     /// # Arguments
     /// 
     /// * `value` - The 2-byte array to convert.
-    fn from(value: [u8; 2]) -> Self {
-        Self::from(u16::from_be_bytes(value))
+    fn try_from(value: [u8; 2]) -> Result<Self, Self::Error> {
+        Self::try_from(u16::from_be_bytes(value))
     }
 }
 
-impl From<u16> for Opcode {
+impl TryFrom<u16> for Opcode {
+
+    type Error = EmulatorError;
+
     /// Map a u16 value to the corresponding opcode.
     /// 
     /// # Arguments
     /// 
     /// * `value` - The u16 value to convert.
-    fn from(value: u16) -> Self {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         // Macros to help with parsing the opcode
         macro_rules! nibble {
             ($n:expr) => {
                 (value >> (12 - (4 * $n)) & 0xF) as u8
+            };
+        }
+
+        macro_rules! register {
+            ($n:expr) => {
+                RegisterIndex::try_new(nibble!($n))?
             };
         }
 
@@ -186,7 +200,7 @@ impl From<u16> for Opcode {
         }
 
         // Map the opcode to the corresponding enum variant
-        match value {
+        let opcode = match value {
             0x00E0 => Self::Cls,
             0x00EE => Self::Ret,
             0x0000..=0x0FFF => Self::Sys {
@@ -199,65 +213,65 @@ impl From<u16> for Opcode {
                 address: address!(),
             },
             0x3000..=0x3FFF => Self::SeByte {
-                x: nibble!(1),
+                x: register!(1),
                 byte: byte!(),
             },
             0x4000..=0x4FFF => Self::SneByte {
-                x: nibble!(1),
+                x: register!(1),
                 byte: byte!(),
             },
             0x5000..=0x5FFF => match nibble!(3) {
                 0x0 => Self::SeRegister {
-                    x: nibble!(1),
-                    y: nibble!(2),
+                    x: register!(1),
+                    y: register!(2),
                 },
                 _ => Self::Invalid(value),
             },
             0x6000..=0x6FFF => Self::LdByte {
-                x: nibble!(1),
+                x: register!(1),
                 byte: byte!(),
             },
             0x7000..=0x7FFF => Self::AddByte {
-                x: nibble!(1),
+                x: register!(1),
                 byte: byte!(),
             },
             0x8000..=0x8FFF => match nibble!(3) {
                 0x0 => Self::LdRegister {
-                    x: nibble!(1),
-                    y: nibble!(2),
+                    x: register!(1),
+                    y: register!(2),
                 },
                 0x1 => Self::Or {
-                    x: nibble!(1),
-                    y: nibble!(2),
+                    x: register!(1),
+                    y: register!(2),
                 },
                 0x2 => Self::And {
-                    x: nibble!(1),
-                    y: nibble!(2),
+                    x: register!(1),
+                    y: register!(2),
                 },
                 0x3 => Self::Xor {
-                    x: nibble!(1),
-                    y: nibble!(2),
+                    x: register!(1),
+                    y: register!(2),
                 },
                 0x4 => Self::AddRegister {
-                    x: nibble!(1),
-                    y: nibble!(2),
+                    x: register!(1),
+                    y: register!(2),
                 },
                 0x5 => Self::Sub {
-                    x: nibble!(1),
-                    y: nibble!(2),
+                    x: register!(1),
+                    y: register!(2),
                 },
-                0x6 => Self::Shr { x: nibble!(1) },
+                0x6 => Self::Shr { x: register!(1) },
                 0x7 => Self::Subn {
-                    x: nibble!(1),
-                    y: nibble!(2),
+                    x: register!(1),
+                    y: register!(2),
                 },
-                0xE => Self::Shl { x: nibble!(1) },
+                0xE => Self::Shl { x: register!(1) },
                 _ => Self::Invalid(value),
             },
             0x9000..=0x9FFF => match nibble!(3) {
                 0x0 => Self::SneRegister {
-                    x: nibble!(1),
-                    y: nibble!(2),
+                    x: register!(1),
+                    y: register!(2),
                 },
                 _ => Self::Invalid(value),
             },
@@ -268,32 +282,33 @@ impl From<u16> for Opcode {
                 address: address!(),
             },
             0xC000..=0xCFFF => Self::Rnd {
-                x: nibble!(1),
+                x: register!(1),
                 byte: byte!(),
             },
             0xD000..=0xDFFF => Self::Drw {
-                x: nibble!(1),
-                y: nibble!(2),
+                x: register!(1),
+                y: register!(2),
                 n: nibble!(3),
             },
             0xE000..=0xEFFF => match (nibble!(2), nibble!(3)) {
-                (0x9, 0xE) => Self::Skp { x: nibble!(1) },
-                (0xA, 0x1) => Self::Sknp { x: nibble!(1) },
+                (0x9, 0xE) => Self::Skp { x: register!(1) },
+                (0xA, 0x1) => Self::Sknp { x: register!(1) },
                 _ => Self::Invalid(value),
             },
             0xF000..=0xFFFF => match (nibble!(2), nibble!(3)) {
-                (0x0, 0x7) => Self::LdVxDT { x: nibble!(1) },
-                (0x0, 0xA) => Self::LdVxK { x: nibble!(1) },
-                (0x1, 0x5) => Self::LdDTVx { x: nibble!(1) },
-                (0x1, 0x8) => Self::LdSTVx { x: nibble!(1) },
-                (0x1, 0xE) => Self::AddIVx { x: nibble!(1) },
-                (0x2, 0x9) => Self::LdFVx { x: nibble!(1) },
-                (0x3, 0x3) => Self::LdBVx { x: nibble!(1) },
-                (0x5, 0x5) => Self::LdIVx { x: nibble!(1) },
-                (0x6, 0x5) => Self::LdVxI { x: nibble!(1) },
+                (0x0, 0x7) => Self::LdVxDT { x: register!(1) },
+                (0x0, 0xA) => Self::LdVxK { x: register!(1) },
+                (0x1, 0x5) => Self::LdDTVx { x: register!(1) },
+                (0x1, 0x8) => Self::LdSTVx { x: register!(1) },
+                (0x1, 0xE) => Self::AddIVx { x: register!(1) },
+                (0x2, 0x9) => Self::LdFVx { x: register!(1) },
+                (0x3, 0x3) => Self::LdBVx { x: register!(1) },
+                (0x5, 0x5) => Self::LdIVx { x: register!(1) },
+                (0x6, 0x5) => Self::LdVxI { x: register!(1) },
                 _ => Self::Invalid(value),
             },
-        }
+        };
+        Ok(opcode)
     }
 }
 

@@ -13,6 +13,8 @@ pub enum EmulatorError {
     InvalidAddress(u16),
     // The address is out of bounds.
     OutOfBounds(u16),
+    /// The register is not valid.
+    InvalidRegister(u8),
 }
 
 impl std::fmt::Display for EmulatorError {
@@ -36,6 +38,9 @@ impl std::fmt::Display for EmulatorError {
                     "Out of Bounds: The address {end_address} is out of bounds. [0x000, 0xFFF]"
                 )
             }
+            EmulatorError::InvalidRegister(x) => write!(
+                f,
+                "Invalid Register: The register {x} is not valid. [0x0, 0xF]")
         }
     }
 }

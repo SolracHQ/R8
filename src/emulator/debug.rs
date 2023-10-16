@@ -1,8 +1,8 @@
 use crate::{
     emulator::{Emulator, State},
     memory::Address,
+    register::VRegisters,
     stack::Stack,
-    REGISTER_COUNT,
 };
 
 // Impl getters for debugging
@@ -17,18 +17,18 @@ impl Emulator {
         self.i
     }
     /// Returns the current value of the register
-    pub fn v_registers(&self) -> &[u8; REGISTER_COUNT] {
-        &self.v_registers
+    pub fn v_registers(&self) -> &VRegisters {
+        &self.registers
     }
 
     /// Returns the current value of the sound register
     pub fn sound_timer(&self) -> u8 {
-        self.sound_timer
+        self.sound_timer.get()
     }
 
     /// Returns the current value of the delay register
     pub fn delay_timer(&self) -> u8 {
-        self.delay_timer
+        self.delay_timer.get()
     }
     /// Returns an inmutable reference to the stack
     pub fn stack(&self) -> &Stack<Address> {

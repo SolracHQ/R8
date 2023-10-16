@@ -122,10 +122,10 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
                 });
 
                 // Print V registers on colums of 4
-                for i in (0..REGISTER_COUNT).step_by(4) {
+                for i in (0..REGISTER_COUNT as u8).step_by(4) {
                     ui.horizontal(|ui| {
                         for j in i..i + 4 {
-                            ui.label(format!("V{:X}: 0x{:02X}", j, emulator.v_registers()[j]));
+                            ui.label(format!("V{:X}: 0x{:02X}", j, emulator.v_registers().try_index(j).unwrap()));
                         }
                     });
                 }
