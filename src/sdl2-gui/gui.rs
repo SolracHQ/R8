@@ -132,6 +132,45 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
 
                 // Buttons to pause and step and continue
                 ui.horizontal(|ui| {
+                    if ui.button("Load ROM").clicked() {
+                        let rom = rfd::FileDialog::new()
+                            .add_filter("CHIP-8 ROM", &["ch8", "rom", "bin"])
+                            .pick_file();
+                        if let Some(rom) = rom {
+                            let rom = match std::fs::File::open(rom) {
+                                Ok(rom) => rom,
+                                Err(err) => {
+                                    warn!("Unable to open file: {}", err);
+                                    return;
+                                }
+                            };
+                            emulator.load_rom(rom).unwrap();
+                        }
+                    }
+                    if ui.button("Load Source Code").clicked() {
+                        let src = rfd::FileDialog::new()
+                            .add_filter("CHIP-8 Source Code", &["asm", "txt", "8s"])
+                            .pick_file();
+                        if let Some(src) = src {
+                            let mut src = match std::fs::File::open(src) {
+                                Ok(src) => src,
+                                Err(err) => {
+                                    warn!("Unable to open file: {}", err);
+                                    return;
+                                }
+                            };
+                            let mut game = vec![];
+                            match r8::assembler::assemble(&mut src, &mut game) {
+                                Ok(_) => {
+                                    emulator.load_rom(game.as_slice()).unwrap();
+                                }
+                                Err(err) => {
+                                    warn!("Unable to assemble source code: {}", err);
+                                    return;
+                                }
+                            }
+                        }
+                    }
                     if ui.button("Pause").clicked() {
                         paused = true;
                     }

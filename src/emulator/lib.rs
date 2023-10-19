@@ -14,6 +14,8 @@ mod tests;
 pub mod emulator;
 pub mod debug;
 
+pub mod assembler;
+
 pub use display::{HEIGHT, WIDTH};
 
 /// Amount of V registers in the CHIP-8.

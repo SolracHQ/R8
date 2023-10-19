@@ -1,6 +1,10 @@
-fn initialize_empty_emulator() -> super::Emulator {
-    let mut emulator = super::Emulator::new();
-    assert!(emulator.load_rom(&vec![0u8] as &[u8]).is_ok());
+use crate::register::RegisterIndex;
+
+use super::emulator::Emulator;
+
+fn initialize_empty_emulator() -> Emulator {
+    let mut emulator = Emulator::new();
+    assert!(emulator.load_rom(&[0u8] as &[u8]).is_ok());
     emulator
 }
 
@@ -36,7 +40,7 @@ fn test_jump_instructions() {
     // Initialize the emulator
     let mut emulator = initialize_empty_emulator();
 
-    let address: super::Address = super::memory::Address::new(0x344);
+    let address: super::memory::Address = super::memory::Address::new(0x344);
     // Set instruction on 0x345 to JMP 0x200 -> 1200
     let jump_opcode = [0x13, 0x44];
     emulator
@@ -89,7 +93,7 @@ fn test_skip() {
         .unwrap();
 
     // Set V0 to a specific value for testing the first skip instruction
-    emulator.v_registers[0] = 0;
+    emulator.registers[RegisterIndex::new(0)] = 0;
 
     // Tick the emulator and assert that the program counter has skipped the padding instruction
     assert!(matches!(emulator.tick(), Ok(())));
@@ -99,7 +103,7 @@ fn test_skip() {
     );
 
     // Change V0 to test the second skip instruction
-    emulator.v_registers[0] = 2;
+    emulator.registers[RegisterIndex::new(0)] = 2;
     assert!(matches!(emulator.tick(), Ok(())));
     assert_eq!(
         emulator.pc.inner(),
@@ -107,7 +111,7 @@ fn test_skip() {
     );
 
     // Set V2 to a specific value for testing the third and fourth skip instructions
-    emulator.v_registers[2] = 4;
+    emulator.registers[RegisterIndex::new(2)] = 4;
     assert!(matches!(emulator.tick(), Ok(())));
     assert_eq!(
         emulator.pc.inner(),
@@ -120,7 +124,7 @@ fn test_skip() {
     );
 
     // Set V1 and V2 to the same value for testing the fifth skip instruction
-    emulator.v_registers[1..=2].copy_from_slice(&[6, 6]);
+    emulator.registers[RegisterIndex::new(1)..=RegisterIndex::new(2)].copy_from_slice(&[6, 6]);
 
     assert!(matches!(emulator.tick(), Ok(())));
     assert_eq!(
@@ -129,7 +133,7 @@ fn test_skip() {
     );
 
     // Change V1 to test the sixth skip instruction
-    emulator.v_registers[1] = 0;
+    emulator.registers[RegisterIndex::new(1)] = 0;
 
     assert!(matches!(emulator.tick(), Ok(())));
     assert_eq!(

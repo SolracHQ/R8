@@ -3,11 +3,7 @@ mod sound;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::builder().format_timestamp(None).init();
-
-    let rom = std::fs::File::open("roms/PONG2")?;
-    let mut emu = r8::emulator::Emulator::new();
-    emu.load_rom(rom)?;
-
+    let emu = r8::emulator::Emulator::new();
     gui::run(emu)?;
     Ok(())
 }
