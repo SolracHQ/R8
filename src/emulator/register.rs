@@ -167,7 +167,7 @@ impl std::ops::Index<std::ops::RangeInclusive<RegisterIndex>> for VRegisters {
         unsafe {
             std::slice::from_raw_parts(
                 self.registers.as_ptr().add(index.start().0 as usize),
-                index.end().0 as usize - index.start().0 as usize,
+                index.end().0 as usize - index.start().0 as usize + 1,
             )
         }
     }
@@ -190,7 +190,7 @@ impl std::ops::IndexMut<std::ops::RangeInclusive<RegisterIndex>> for VRegisters 
         unsafe {
             std::slice::from_raw_parts_mut(
                 self.registers.as_mut_ptr().add(index.start().0 as usize),
-                index.end().0 as usize - index.start().0 as usize,
+                index.end().0 as usize - index.start().0 as usize + 1,
             )
         }
     }

@@ -42,7 +42,7 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
 
     let window = video_subsystem
         .window(
-            "R8 - Chip8 Emulator",
+            "R8 - Chip8 Interpreter",
             WIDTH as u32 * SCALE + 20,
             HEIGHT as u32 * SCALE + 186,
         )
