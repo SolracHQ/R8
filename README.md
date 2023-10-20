@@ -1,4 +1,4 @@
-# R8: Yet Another CHIP-8 Emulator in Rust 😉
+# R8: Yet Another CHIP-8 Interpreter in Rust 😉
 
 R8 is a CHIP-8 emulator written in Rust, using [sdl2](https://www.libsdl.org/) and [egui](https://www.egui.rs/). With an small GUI for debugging and loading roms with drag and drop.
 
@@ -16,7 +16,7 @@ Follow the instructions on the [Rust website](https://www.rust-lang.org/tools/in
 git clone https://github.com/CarlosEduardoL/R8
 ```
 
-### Run the emulator
+### Run the interpreter 
 
 ```bash
 cd R8
