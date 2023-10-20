@@ -1,8 +1,29 @@
+use std::collections::VecDeque;
+
 use log::warn;
-use r8::{emulator::Emulator, HEIGHT, REGISTER_COUNT, WIDTH};
+use r8::{constants::HEIGHT, constants::REGISTER_COUNT, constants::WIDTH, emulator::Emulator};
 use sdl2::keyboard::Keycode as K;
 
 const SCALE: u32 = 12;
+const BASE_FPS: f64 = 60.;
+
+#[derive(Default)]
+struct MovingAverage {
+    inner: VecDeque<f64>,
+}
+
+impl MovingAverage {
+    fn insert(&mut self, data: f64) {
+        if self.inner.len() >= 60 {
+            self.inner.pop_front();
+        }
+        self.inner.push_back(data);
+    }
+
+    fn average(&self) -> f64 {
+        self.inner.iter().sum::<f64>() / self.inner.len() as f64
+    }
+}
 
 pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
     let sdl_context = sdl2::init()?;
@@ -23,7 +44,7 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
         .window(
             "R8 - Chip8 Emulator",
             WIDTH as u32 * SCALE + 20,
-            HEIGHT as u32 * SCALE + 150,
+            HEIGHT as u32 * SCALE + 186,
         )
         .position_centered()
         .opengl()
@@ -31,15 +52,6 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
 
     let _ctx = window.gl_create_context()?;
     let egui_ctx = egui::Context::default();
-
-    // Set Adaptive VSync if available
-    match video_subsystem.gl_set_swap_interval(-1) {
-        Ok(()) => (),
-        Err(err) => {
-            warn!("Unable to set Adaptive VSync: {err}");
-            video_subsystem.gl_set_swap_interval(1)?
-        }
-    }
 
     let shader_ver = egui_sdl2_gl::ShaderVersion::Default;
     let (mut painter, mut egui_state) =
@@ -57,9 +69,10 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut paused: bool = false;
     let mut step: bool = false;
+    let mut fps = MovingAverage::default();
+    let mut speed = 1.0;
 
     loop {
-        let delta = init_instant.elapsed().as_secs_f64();
         egui_state.input.time = Some(start_time.elapsed().as_secs_f64());
         egui_ctx.begin_frame(egui_state.input.take());
 
@@ -88,6 +101,10 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
             painter.update_user_texture_data(texture_id, &pixels);
         }
 
+        let delta = init_instant.elapsed().as_secs_f64();
+        fps.insert(delta);
+        init_instant = std::time::Instant::now();
+
         match emulator.sound_timer() {
             0 => speaker.stop(),
             _ => speaker.play(),
@@ -111,6 +128,9 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
 
                 ui.separator();
 
+                // FPS
+                ui.label(format!("FPS: {:.2}", 1.0 / fps.average()));
+
                 ui.horizontal(|ui| {
                     ui.label(format!("PC: 0x{:03X}", emulator.pc().inner()));
                     ui.label(format!("I: 0x{:03X}", emulator.i().inner()));
@@ -125,7 +145,11 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
                 for i in (0..REGISTER_COUNT as u8).step_by(4) {
                     ui.horizontal(|ui| {
                         for j in i..i + 4 {
-                            ui.label(format!("V{:X}: 0x{:02X}", j, emulator.v_registers().try_index(j).unwrap()));
+                            ui.label(format!(
+                                "V{:X}: 0x{:02X}",
+                                j,
+                                emulator.v_registers().try_index(j).unwrap()
+                            ));
                         }
                     });
                 }
@@ -181,6 +205,14 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
                         paused = false;
                     }
                 });
+
+                // Slider to change the speed and button to reset it
+                ui.horizontal(|ui| {
+                    ui.add(egui::Slider::new(&mut speed, 0.06..=10.0).text("Speed"));
+                    if ui.button("Reset").clicked() {
+                        speed = 1.0;
+                    }
+                });
             });
 
         let egui::FullOutput {
@@ -198,14 +230,11 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
 
         window.gl_swap_window();
 
-        // Take new snapshot of time
-        init_instant = std::time::Instant::now();
-
         // If delta is less than 1/60s, wait for the remaining time
-        if delta < 1.0 / 60.0 {
+        if delta < 1.0 / (BASE_FPS * speed) {
             std::thread::sleep(std::time::Duration::new(
                 0,
-                ((1.0 / 60.0 - delta) * 1_000_000_000.0) as u32,
+                ((1.0 / (BASE_FPS * speed) - delta) * 1_000_000_000.0) as u32,
             ));
         }
     }

@@ -40,10 +40,10 @@ CHIP-8 is an interpreted programming language that was used to create games for 
 - Use default system file explorer to load roms
 - The assembler works
 - You can load a plain text assembler file and run it
+- You can use a slider to change the speed of the emulator
 
 ## Possible improvements
 
-- Add a menu to change the speed of the emulator (by default it runs at 60Hz)
 - Add a Wasm version
 - Add a disassembler
 

@@ -3,7 +3,6 @@ use std::io::Read;
 use log::{debug, error};
 
 use crate::{
-    bcd,
     display::Display,
     error::EmulatorError,
     keyboard::KeyBoard,
@@ -13,9 +12,6 @@ use crate::{
     register::{RegisterIndex, VRegisters},
     stack::Stack, timer::Timer,
 };
-
-/// The index of the flags register in the V registers.
-const FLAGS_REGISTER: RegisterIndex = RegisterIndex::new(0xF);
 
 /// Represents the state of the emulator.
 #[derive(Debug)]
@@ -173,7 +169,10 @@ impl Emulator {
         // Macro to facilitate access to the V registers
         macro_rules! V {
             (0) => {
-                self.registers[RegisterIndex::new(0)]
+                self.registers[RegisterIndex::ZERO]
+            };
+            (FLAGS) => {
+                self.registers[RegisterIndex::FLAG]
             };
             ($reg: expr) => {
                 // Cehck reg is u8
@@ -181,7 +180,7 @@ impl Emulator {
             };
             (0 => $end: expr) => {
                 // Cehck reg is u8
-                self.registers[RegisterIndex::new(0)..=$end]
+                self.registers[RegisterIndex::ZERO..=$end]
             };
         }
 
@@ -208,22 +207,22 @@ impl Emulator {
             Opcode::AddRegister { x, y } => {
                 let result = V![x] as u16 + V![y] as u16;
                 V![x] = (result & 0xFF) as u8;
-                V![FLAGS_REGISTER] = if result & 0xFF00 != 0 { 1 } else { 0 }
+                V![FLAGS] = if result & 0xFF00 != 0 { 1 } else { 0 }
             }
             Opcode::Sub { x, y } => {
-                V![FLAGS_REGISTER] = if V![x] > V![y] { 1 } else { 0 };
+                V![FLAGS] = if V![x] > V![y] { 1 } else { 0 };
                 V![x] = V![x].wrapping_sub(V![y]);
             }
             Opcode::Shr { x } => {
-                V![FLAGS_REGISTER] = V![x] & 1;
+                V![FLAGS] = V![x] & 1;
                 V![x] >>= 1;
             }
             Opcode::Subn { x, y } => {
-                V![FLAGS_REGISTER] = if V![y] > V![x] { 1 } else { 0 };
+                V![FLAGS] = if V![y] > V![x] { 1 } else { 0 };
                 V![x] = V![y].wrapping_sub(V![x]);
             }
             Opcode::Shl { x } => {
-                V![FLAGS_REGISTER] = (V![x] >> 7) & 1;
+                V![FLAGS] = (V![x] >> 7) & 1;
                 V![x] <<= 1;
             }
             Opcode::SneRegister { x, y } => {
@@ -235,12 +234,12 @@ impl Emulator {
             Opcode::JpV0 { address } => self.pc.add_assign(address.inner() + V![0] as u16)?,
             Opcode::Rnd { x, byte } => V![x] = self.rand.next() & byte,
             Opcode::Drw { x, y, n } => {
-                V![FLAGS_REGISTER] = 0;
+                V![FLAGS] = 0;
                 let (x, y) = (V![x], V![y]);
                 for row in 0..n {
-                    V![FLAGS_REGISTER] |= self.display.set(
+                    V![FLAGS] |= self.display.set(
                         x,
-                        y % crate::HEIGHT as u8 + row,
+                        y % crate::constants::HEIGHT as u8 + row,
                         self.memory[(self.i.inner() + row as u16).try_into()?],
                     )
                 }
@@ -281,4 +280,20 @@ impl Default for Emulator {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Translate a number to BCD.
+/// 
+/// # Arguments
+/// 
+/// * `value` - The value to translate.
+/// 
+/// # Returns
+/// 
+/// * `[u8; 3]` - The BCD representation of the value.
+fn bcd(value: u8) -> [u8; 3] {
+    let hundreds = value / 100;
+    let tens = (value % 100) / 10;
+    let ones = value % 10;
+    [hundreds, tens, ones]
 }

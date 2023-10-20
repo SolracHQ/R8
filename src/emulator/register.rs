@@ -1,13 +1,19 @@
 use crate::error::EmulatorError;
 
-/**
- * Represents a CHIP-8 Register Index.
- */
+
+/// Represents a CHIP-8 Register Index. 
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy)]
 pub struct RegisterIndex(u8);
 
 impl RegisterIndex {
+
+    /// The RegisterIndex for the Zero Register
+    pub const ZERO: RegisterIndex = RegisterIndex(0);
+
+    /// The RegisterIndex for the Flag Register
+    pub const FLAG: RegisterIndex = RegisterIndex(0xF);
+
     /**
      * Creates a new RegisterIndex from a u8 value.
      * 
@@ -79,7 +85,7 @@ impl std::fmt::UpperHex for RegisterIndex {
 #[repr(transparent)]
 #[derive(Default)]
 pub struct VRegisters {
-    registers: [u8; crate::REGISTER_COUNT],
+    registers: [u8; crate::constants::REGISTER_COUNT],
 }
 
 impl VRegisters {

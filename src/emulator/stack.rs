@@ -1,7 +1,3 @@
-/// http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.2
-/// The chip-8 stack size is traditionally 16 (`0x10`).
-pub const STACK_SIZE: usize = 0x10;
-
 /// The `Stack` struct represents a stack data structure for storing `Address` values that are the return point on call instructions.
 ///
 /// # Fields
@@ -17,7 +13,7 @@ pub const STACK_SIZE: usize = 0x10;
 ///
 /// It is generic to facilite testing.
 pub struct Stack<T: Copy + Default> {
-    array: [T; STACK_SIZE],
+    array: [T; crate::constants::STACK_SIZE],
     top: usize,
 }
 
@@ -32,7 +28,7 @@ where
     /// * `Stack<T>` - The new stack.
     pub fn new() -> Self {
         Self {
-            array: [T::default(); STACK_SIZE],
+            array: [T::default(); crate::constants::STACK_SIZE],
             top: 0,
         }
     }
@@ -47,7 +43,7 @@ where
     ///
     /// * `Result<(), RuntimeError>` - Returns Ok if the item was pushed onto the stack, otherwise returns an error.
     pub fn push(&mut self, item: T) -> Result<(), super::error::EmulatorError> {
-        if self.top >= STACK_SIZE {
+        if self.top >= crate::constants::STACK_SIZE {
             Err(super::error::EmulatorError::StackOverFlow)
         } else {
             self.array[self.top] = item;
@@ -116,7 +112,7 @@ mod tests {
     #[test]
     fn test_push_overflow() {
         let mut stack = Stack::new();
-        for i in 0..STACK_SIZE {
+        for i in 0..crate::constants::STACK_SIZE {
             assert!(matches!(stack.push(i), Ok(())));
         }
         assert!(matches!(
