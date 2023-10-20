@@ -14,6 +14,7 @@ On Linux:
 
 - rustup
 - sdl2
+- libgtk3
 
 ## How to run it
 
