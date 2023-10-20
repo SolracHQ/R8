@@ -4,6 +4,17 @@ R8 is a CHIP-8 emulator written in Rust, using [sdl2](https://www.libsdl.org/) a
 
 ![R8](img/Screnshot.png)
 
+## Dependencies
+
+On windows:
+
+- rustup
+
+On Linux:
+
+- rustup
+- sdl2
+
 ## How to run it
 
 ### Install Rust
