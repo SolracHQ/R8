@@ -16,7 +16,7 @@ Follow the instructions on the [Rust website](https://www.rust-lang.org/tools/in
 git clone https://github.com/CarlosEduardoL/R8
 ```
 
-### Run the interpreter 
+### Run the interpreter
 
 ```bash
 cd R8
