@@ -245,12 +245,12 @@ impl Emulator {
                 }
             }
             Opcode::Skp { x } => {
-                if self.keyboard.is_set(V![x]) {
+                if self.keyboard.is_set(V![x] & 0xF) {
                     self.pc.add_assign(2)?;
                 }
             }
             Opcode::Sknp { x } => {
-                if !self.keyboard.is_set(V![x]) {
+                if !self.keyboard.is_set(V![x] & 0xF) {
                     self.pc.add_assign(2)?;
                 }
             }
@@ -259,7 +259,7 @@ impl Emulator {
             Opcode::LdDTVx { x } => self.delay_timer.set(V![x]),
             Opcode::LdSTVx { x } => self.sound_timer.set(V![x]),
             Opcode::AddIVx { x } => self.i.add_assign(V![x] as u16)?,
-            Opcode::LdFVx { x } => self.i = Address::new(V![x] as u16 * 5),
+            Opcode::LdFVx { x } => self.i = Address::new((V![x] & 0xF) as u16 * 5),
             Opcode::LdBVx { x } => self.memory.read_range(self.i, &bcd(V![x]))?,
             Opcode::LdIVx { x } => self.memory.read_range(self.i, &V![0 => x])?,
             Opcode::LdVxI { x } => self.memory.write_range(self.i, &mut V![0 => x])?,
