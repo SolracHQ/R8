@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use egui::load::SizedTexture;
 use log::warn;
 use r8::{constants::HEIGHT, constants::REGISTER_COUNT, constants::WIDTH, emulator::Emulator};
 use sdl2::keyboard::Keycode as K;
@@ -119,10 +120,11 @@ pub fn run(mut emulator: Emulator) -> Result<(), Box<dyn std::error::Error>> {
             .show(&egui_ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.centered_and_justified(|ui| {
-                        ui.image(
+                        let image = egui::Image::from_texture(SizedTexture::new(
                             texture_id,
                             egui::vec2((SCALE * WIDTH as u32) as _, (HEIGHT as u32 * SCALE) as _),
-                        )
+                        ));
+                        ui.add(image)
                     })
                 });
 
