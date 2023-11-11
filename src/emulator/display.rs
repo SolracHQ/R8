@@ -33,6 +33,7 @@ impl Display {
         self.vram = [[false; crate::constants::HEIGHT]; crate::constants::WIDTH];
     }
 
+    /// Returns an iterator over the grid of the display.
     pub fn grid(&self) -> impl Iterator<Item = bool> + '_ {
         InvertIterator {
             display: self,
