@@ -115,6 +115,7 @@ fn main() {
             std::thread::sleep(frame_duration - elapsed);
         }
     }
+    crossterm::terminal::disable_raw_mode().unwrap();
 }
 
 /// The original implementation of the Chip8 system had a 16-key hexadecimal keypad with the following layout:
