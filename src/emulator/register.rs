@@ -90,7 +90,7 @@ pub struct VRegisters {
 
 impl VRegisters {
     /**
-     * Indexes the VRegisters wihout panicking.
+     * Indexes the VRegisters without panicking.
      * 
      * # Arguments
      * 

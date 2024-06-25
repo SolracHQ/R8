@@ -5,6 +5,7 @@ mod display;
 mod emulator;
 mod input;
 mod sound;
+mod debug;
 
 const SCALE: usize = 12;
 const RESOLUTION: (f32, f32) = ((r8::constants::WIDTH * SCALE)as f32, (r8::constants::HEIGHT * SCALE) as f32);
@@ -24,5 +25,6 @@ fn main() {
         .add_plugins(display::DisplayPlugin)
         .add_plugins(input::InputPlugin)
         .add_plugins(sound::SoundPlugin)
+        .add_plugins(debug::DebugPlugin)
         .run();
 }
