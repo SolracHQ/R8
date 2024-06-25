@@ -5,7 +5,7 @@ use log::{debug, error};
 use crate::{
     display::Display,
     error::EmulatorError,
-    keyboard::KeyBoard,
+    keyboard::{self, KeyBoard},
     memory::{Address, Memory},
     opcode::Opcode,
     rand::RandGen,
@@ -47,8 +47,8 @@ pub struct Emulator {
     pub(crate) stack: Stack<Address>,
     pub(crate) memory: Memory,
     // Devices
-    pub display: Display,
-    pub keyboard: KeyBoard,
+    pub(crate) display: Display,
+    pub(crate) keyboard: KeyBoard,
     // Helper Structs
     pub(crate) rand: RandGen,
     pub(crate) state: State,
@@ -125,6 +125,9 @@ impl Emulator {
             }
             _ => {}
         }
+
+        // reset the updated flag
+        self.display.updated = false;
 
         self.sound_timer.decrement();
         self.delay_timer.decrement();
@@ -273,6 +276,26 @@ impl Emulator {
         }
 
         Ok(())
+    }
+
+    /// Returns a reference to the emulator's display.
+    /// 
+    /// # Returns
+    /// 
+    /// * `&Display` - A reference to the emulator's display.
+    pub fn display(&self) -> &Display {
+        &self.display
+    }
+
+
+    /// Change the state of the virtual `key` key to pressed.
+    pub fn press_key(&mut self, key: keyboard::Key) {
+        self.keyboard.set(key as u8);
+    }
+
+    /// Change the state of the virtual `key` key to released.
+    pub fn release_key(&mut self, key: keyboard::Key) {
+        self.keyboard.unset(key as u8);
     }
 }
 

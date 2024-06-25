@@ -33,14 +33,6 @@ impl Display {
         self.vram = [[false; crate::constants::HEIGHT]; crate::constants::WIDTH];
     }
 
-    /// Returns an iterator over the grid of the display.
-    pub fn grid(&self) -> impl Iterator<Item = bool> + '_ {
-        InvertIterator {
-            display: self,
-            current: (0, 0),
-        }
-    }
-
     /// Sets 8 pixels on the display.
     ///
     /// # Arguments
@@ -81,27 +73,32 @@ impl Display {
     pub fn get(&self, x: usize, y: usize) -> bool {
         self.vram[x][y]
     }
-}
 
-struct InvertIterator<'a> {
-    display: &'a Display,
-    current: (usize, usize),
-}
-
-impl Iterator for InvertIterator<'_> {
-    type Item = bool;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let (x, y) = self.current;
-        if x >= crate::constants::WIDTH {
-            self.current = (0, y + 1);
-        }
-        let (x, y) = self.current;
-        if y >= crate::constants::HEIGHT {
-            return None;
-        }
-        let result = self.display.get(x, y);
-        self.current = (x + 1, y);
-        Some(result)
+    /// Returns a reference to the video RAM of the display.
+    /// 
+    /// # Returns
+    /// 
+    /// * `&[[bool; crate::constants::HEIGHT]; crate::constants::WIDTH]` - The video RAM of the display.
+    pub fn get_vram(&self) -> &[[bool; crate::constants::HEIGHT]; crate::constants::WIDTH] {
+        &self.vram
     }
+}
+
+impl std::ops::Index<(usize, usize)> for Display {
+    type Output = bool;
+    
+    /// Returns the value of the pixel at the given coordinates.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `x` - The x-coordinate of the pixel.
+    /// * `y` - The y-coordinate of the pixel.
+    /// 
+    /// # Returns
+    /// 
+    /// * `&bool` - The value of the pixel.
+    fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
+        &self.vram[x][y]
+    }
+    
 }

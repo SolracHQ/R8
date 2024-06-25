@@ -2,23 +2,53 @@
 #[derive(Default)]
 /// http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#keyboard
 /// Represents the keyboard of the Chip8 system as a bitmask.
-/// 
-/// The original implementation of the Chip8 system had a 16-key hexadecimal keypad with the following layout:
-/// 
-/// | 1 | 2 | 3 | C |
-/// |---|---|---|---|
-/// | 4 | 5 | 6 | D |
-/// | 7 | 8 | 9 | E |
-/// | A | 0 | B | F |
-/// 
-/// The keys are mapped to the following indexes:
-/// 
-/// | 1 | 2 | 3 | 4 |
-/// |---|---|---|---|
-/// | Q | W | E | R |
-/// | A | S | D | F |
-/// | Z | X | C | V |
 pub struct KeyBoard(u16);
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Represents the keys on the Chip8 keyboard
+pub enum Key {
+    K0 = 0x0,
+    K1 = 0x1,
+    K2 = 0x2,
+    K3 = 0x3,
+    K4 = 0x4,
+    K5 = 0x5,
+    K6 = 0x6,
+    K7 = 0x7,
+    K8 = 0x8,
+    K9 = 0x9,
+    KA = 0xA,
+    KB = 0xB,
+    KC = 0xC,
+    KD = 0xD,
+    KE = 0xE,
+    KF = 0xF,
+}
+
+impl Key {
+    pub fn all() -> core::slice::Iter<'static, Key> {
+        const KEYS: [Key; 16] = [
+            Key::K0,
+            Key::K1,
+            Key::K2,
+            Key::K3,
+            Key::K4,
+            Key::K5,
+            Key::K6,
+            Key::K7,
+            Key::K8,
+            Key::K9,
+            Key::KA,
+            Key::KB,
+            Key::KC,
+            Key::KD,
+            Key::KE,
+            Key::KF,
+        ];
+        KEYS.iter()
+    }
+}
 
 impl KeyBoard {
 
