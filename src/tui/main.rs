@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use crossterm::{style::Stylize, ExecutableCommand};
-use r8::emulator;
+use r8::{emulator, keyboard::Key};
 
 // Clap
 #[derive(Parser)]
@@ -66,7 +66,7 @@ fn main() {
                         }
                         crossterm::event::KeyCode::Char(key) => {
                             if let Some(key) = map_key(key) {
-                                emu.keyboard.set(key);
+                                emu.press_key(key);
                             }
                         }
                         _ => {}
@@ -83,7 +83,7 @@ fn main() {
             log_and_exit!("Fatal emulator error: {}", err);
         }
 
-        if emu.display.updated {
+        if emu.display().updated {
             if let Err(err) = stdout.execute(crossterm::terminal::Clear(
                 crossterm::terminal::ClearType::All,
             )) {
@@ -91,7 +91,7 @@ fn main() {
             }
             for x in 0..r8::constants::WIDTH {
                 for y in 0..r8::constants::HEIGHT {
-                    if emu.display.get(x, y) {
+                    if emu.display()[(x,y)] {
                         if let Err(err) =
                             stdout.execute(crossterm::cursor::MoveTo(x as u16, y as u16))
                         {
@@ -104,11 +104,10 @@ fn main() {
                 }
             }
         }
-        emu.display.updated = false;
 
         // Due TUI limitations, we can only know if a key is pressed
         // so we clear all keys on every frame
-        (0..0xF).for_each(|x| emu.keyboard.unset(x));
+        Key::all().for_each(|x| emu.release_key(*x));
 
         let elapsed = frame_start.elapsed();
         if elapsed < frame_duration {
@@ -133,24 +132,24 @@ fn main() {
 /// | Q | W | E | R |
 /// | A | S | D | F |
 /// | Z | X | C | V |
-fn map_key(key: char) -> Option<u8> {
+fn map_key(key: char) -> Option<Key> {
     match key {
-        '1' => Some(0x1u8),
-        '2' => Some(0x2),
-        '3' => Some(0x3),
-        '4' => Some(0xc),
-        'Q' | 'q' => Some(0x4),
-        'W' | 'w' => Some(0x5),
-        'E' | 'e' => Some(0x6),
-        'R' | 'r' => Some(0xd),
-        'A' | 'a' => Some(0x7),
-        'S' | 's' => Some(0x8),
-        'D' | 'd' => Some(0x9),
-        'F' | 'f' => Some(0xe),
-        'Z' | 'z' => Some(0xa),
-        'X' | 'x' => Some(0x0),
-        'C' | 'c' => Some(0xb),
-        'V' | 'v' => Some(0xf),
+        '1' => Some(Key::K1),
+        '2' => Some(Key::K2),
+        '3' => Some(Key::K3),
+        '4' => Some(Key::KC),
+        'Q' | 'q' => Some(Key::K4),
+        'W' | 'w' => Some(Key::K5),
+        'E' | 'e' => Some(Key::K6),
+        'R' | 'r' => Some(Key::KD),
+        'A' | 'a' => Some(Key::K7),
+        'S' | 's' => Some(Key::K8),
+        'D' | 'd' => Some(Key::K9),
+        'F' | 'f' => Some(Key::KE),
+        'Z' | 'z' => Some(Key::KA),
+        'X' | 'x' => Some(Key::K0),
+        'C' | 'c' => Some(Key::KB),
+        'V' | 'v' => Some(Key::KF),
         _ => None,
     }
 }
