@@ -1,0 +1,12 @@
+[package]
+name = "r8-core"
+version = "0.2.0"
+edition = "2021"
+authors = ["CarlosEduardoL"]
+description = "Core types and utilities for the R8 Chip-8 emulator project"
+license = "MIT"
+publish = false
+
+[dependencies]
+# This crate contains only core, std-based types (addresses, memory, opcodes, registers, timers, stack, errors).
+# Add dependencies only if a specific module requires them in the future.

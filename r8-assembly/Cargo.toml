@@ -1,0 +1,15 @@
+[package]
+name = "r8-assembly"
+version = "0.2.0"
+edition = "2021"
+authors = ["CarlosEduardoL"]
+description = "Assembler and tokenizer for the R8 CHIP-8 emulator project"
+license = "MIT"
+publish = false
+
+[lib]
+name = "r8_assembly"
+path = "src/lib.rs"
+
+[dependencies]
+r8-core = { path = "../r8-core" }
