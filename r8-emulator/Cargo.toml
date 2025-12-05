@@ -1,0 +1,15 @@
+[package]
+name = "r8-emulator"
+version = "0.2.0"
+edition = "2021"
+authors = ["CarlosEduardoL"]
+description = "CHIP-8 emulator implementation (core runtime and devices)"
+license = "MIT"
+publish = false
+
+[dependencies]
+r8-core = { path = "../r8-core" }
+log = "0.4"
+
+[dev-dependencies]
+# Add dev-dependencies (for tests) here if needed in the future

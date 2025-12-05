@@ -1,0 +1,25 @@
+[package]
+name = "r8-gui"
+version = "0.2.0"
+edition = "2021"
+authors = ["CarlosEduardoL"]
+description = "Bevy-based GUI front-end for the R8 CHIP-8 emulator"
+license = "MIT"
+publish = false
+
+[dependencies]
+r8-emulator = { path = "../r8-emulator" }
+r8-core = { path = "../r8-core" }
+r8-assembly = { path = "../r8-assembly" }
+log = "0.4"
+
+bevy = { version = "0.17.0"}
+bevy_egui = "0.38.0"
+dirs = "5.0"
+
+[profile.dev]
+opt-level = 1
+
+[[bin]]
+name = "gui"
+path = "src/main.rs"
