@@ -75,6 +75,24 @@ where
     self.top
   }
 
+  /// Returns true if the stack is empty.
+  ///
+  /// # Returns
+  ///
+  /// * `bool` - True if the stack has no items.
+  pub fn is_empty(&self) -> bool {
+    self.top == 0
+  }
+
+  /// Returns an iterator over the items on the stack (bottom to top).
+  ///
+  /// # Returns
+  ///
+  /// * `impl Iterator<Item = &T>` - An iterator over the stack items.
+  pub fn iter(&self) -> impl Iterator<Item = &T> {
+    self.array[..self.top].iter()
+  }
+
   /// Clears the stack by setting the top of the stack to 0.
   pub fn clear(&mut self) {
     self.top = 0;

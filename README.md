@@ -12,14 +12,14 @@ R8 is a CHIP-8 emulator written in Rust. This repository is organized as a Cargo
 
 ---
 
-## Highlights (What changed)
+## Highlights
 
 - Project is now a Cargo workspace with multiple crates.
 - The previous toggling of the TUI/GUI via features is no longer required. Each frontend is a separate crate + binary:
   - GUI binary: `gui`
   - TUI binary: `tui`
 - Each frontend is independent; you can use `r8-emulator` alone to build a new frontend (e.g. SDL, Web, or any UI system).
-- Assembly tooling (`r8-assembly`) is a standalone crate you can reuse.
+- Assembly tooling (`r8-assembly`) is a standalone crate used by frontend to assemby source files.
 
 ---
 
@@ -27,7 +27,6 @@ R8 is a CHIP-8 emulator written in Rust. This repository is organized as a Cargo
 
 - Rust toolchain (rustup)
 - On Linux:
-  - GTK 3 (if using file dialog support with the Bevy GUI)
   - Other dependencies your system might require for Bevy or audio backends
 - On Windows:
   - Rust toolchain and any native dependencies for Bevy as needed

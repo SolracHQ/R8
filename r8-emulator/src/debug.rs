@@ -1,5 +1,5 @@
 use crate::emulator::{Emulator, State};
-use r8_core::{Address, Stack, VRegisters};
+use r8_core::{Address, EmulatorError, Stack, VRegisters};
 
 /// Impl getters for debugging
 impl Emulator {
@@ -36,5 +36,10 @@ impl Emulator {
   /// Return the current state of the emulator
   pub fn state(&self) -> &State {
     &self.state
+  }
+
+  /// Read memory at the given address into the buffer (for debug/memory inspector)
+  pub fn read_memory(&self, address: Address, buffer: &mut [u8]) -> Result<(), EmulatorError> {
+    self.memory.write_range(address, buffer)
   }
 }

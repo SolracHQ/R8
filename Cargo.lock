@@ -4179,6 +4179,7 @@ dependencies = [
  "bevy_egui",
  "dirs",
  "log",
+ "r8-assembly",
  "r8-core",
  "r8-emulator",
 ]

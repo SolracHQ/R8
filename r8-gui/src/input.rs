@@ -1,250 +1,125 @@
-use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPrimaryContextPass};
-use std::fs;
-use std::path::PathBuf;
-
 use crate::emulator::Emulator;
+use crate::ui::{FileChooserMode, FileChooserState, UiPanelState};
+use crate::ui::{BOTTOM_PANEL_HEIGHT, RIGHT_PANEL_WIDTH, TOP_PANEL_HEIGHT};
+use crate::RESOLUTION;
 
-/// Message event for loading a ROM into the emulator
-#[derive(Message)]
-pub struct LoadRomMessage {
-  pub contents: Vec<u8>,
-  pub name: String,
-}
+use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 
-/// Resource to track file chooser state
-#[derive(Resource)]
-struct FileChooserState {
-  show: bool,
-  current_path: PathBuf,
-  selected_file: Option<PathBuf>,
-  error_message: Option<String>,
-}
-
-impl Default for FileChooserState {
-  fn default() -> Self {
-    // Start in the roms directory if it exists, otherwise current directory
-    let current_path = std::env::current_dir()
-      .unwrap_or_else(|_| PathBuf::from("."))
-      .join("roms");
-
-    let current_path = if current_path.exists() {
-      current_path
-    } else {
-      std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-    };
-
-    Self {
-      show: true, // Show at startup
-      current_path,
-      selected_file: None,
-      error_message: None,
-    }
-  }
-}
-
-/// Input plugin that handles loading ROMs via egui dialog and mapping keyboard input to the emulator.
+/// Input plugin is responsible for routing keyboard input into emulator keys
+/// and for handling global hotkeys: toggling the debug panel and the file chooser.
 pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
   fn build(&self, app: &mut App) {
-    app
-      .add_message::<LoadRomMessage>()
-      .init_resource::<FileChooserState>()
-      .add_systems(
-        EguiPrimaryContextPass,
-        (
-          file_chooser_ui_system,
-          rom_loaded_system,
-          emulator_keys_system,
-        ),
-      );
+    app.add_systems(Startup, setup_camera_system);
+    app.add_systems(
+      Update,
+      (
+        input_toggle_system,
+        emulator_keys_system,
+        camera_update_system,
+      ),
+    );
   }
 }
 
-fn file_chooser_ui_system(
-  mut contexts: EguiContexts,
-  mut state: ResMut<FileChooserState>,
-  mut rom_writer: MessageWriter<LoadRomMessage>,
+/// Setup the camera with correct initial position accounting for UI panels
+fn setup_camera_system(mut camera_query: Query<&mut Transform, With<Camera2d>>) {
+  if let Ok(mut camera) = camera_query.single_mut() {
+    // Offset camera to account for top and bottom panels
+    // Top panel pushes content down, bottom panel pushes content up
+    // Net effect: shift camera up by (bottom - top) / 2
+    let vertical_offset = (BOTTOM_PANEL_HEIGHT - TOP_PANEL_HEIGHT) / 2.0;
+    camera.translation.y = vertical_offset;
+  }
+}
+
+/// System to toggle the debug panel and the file chooser via hotkeys.
+/// - Escape toggles the debug panel (and resizes the window accordingly)
+/// - F1 toggles the file chooser window
+fn input_toggle_system(
   keyboard_input: Res<ButtonInput<KeyCode>>,
+  mut panel_state: ResMut<UiPanelState>,
+  mut file_chooser: ResMut<FileChooserState>,
+  mut window_query: Query<&mut Window, With<PrimaryWindow>>,
+  mut camera_query: Query<&mut Transform, With<Camera2d>>,
 ) {
-  // Toggle file chooser with F1
+  // Toggle debug panel (Escape)
+  if keyboard_input.just_pressed(KeyCode::Escape) {
+    panel_state.show_debug = !panel_state.show_debug;
+    update_window_and_camera(panel_state.show_debug, &mut window_query, &mut camera_query);
+  }
+
+  // Toggle file chooser (F1)
   if keyboard_input.just_pressed(KeyCode::F1) {
-    state.show = !state.show;
-    state.error_message = None;
+    file_chooser.show = !file_chooser.show;
+    file_chooser.error_message = None;
+    file_chooser.selected_file = None;
+    // default to ROM mode when toggling via hotkey; the top panel can open the
+    // file chooser in a different mode explicitly.
+    file_chooser.mode = FileChooserMode::Rom;
   }
-
-  if !state.show {
-    return;
-  }
-
-  let Ok(ctx) = contexts.ctx_mut() else {
-    return;
-  };
-
-  egui::TopBottomPanel::top("file chooser").show(ctx, |ui| {
-    // Current path display
-    ui.horizontal(|ui| {
-      ui.label("Path:");
-      ui.monospace(state.current_path.display().to_string());
-    });
-
-    ui.separator();
-
-    // Navigation buttons
-    ui.horizontal(|ui| {
-      if ui.button("⬆ Parent").clicked() {
-        if let Some(parent) = state.current_path.parent() {
-          state.current_path = parent.to_path_buf();
-          state.selected_file = None;
-          state.error_message = None;
-        }
-      }
-
-      if ui.button("🏠 Home").clicked() {
-        if let Some(home) = dirs::home_dir() {
-          state.current_path = home;
-          state.selected_file = None;
-          state.error_message = None;
-        }
-      }
-
-      if ui.button("🔄 Refresh").clicked() {
-        state.error_message = None;
-      }
-    });
-
-    ui.separator();
-
-    // File list with scroll area
-    egui::ScrollArea::vertical()
-      .max_height(300.0)
-      .show(ui, |ui| {
-        match fs::read_dir(&state.current_path) {
-          Ok(entries) => {
-            let mut items: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-            items.sort_by(|a, b| {
-              let a_is_dir = a.path().is_dir();
-              let b_is_dir = b.path().is_dir();
-              match (a_is_dir, b_is_dir) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.file_name().cmp(&b.file_name()),
-              }
-            });
-
-            for entry in items {
-              let path = entry.path();
-              let is_dir = path.is_dir();
-              let file_name = entry.file_name().to_string_lossy().to_string();
-
-              // Only show directories and .ch8 files
-              if !is_dir
-                && !file_name.to_lowercase().ends_with(".ch8")
-                && !file_name.to_lowercase().ends_with(".rom")
-              {
-                continue;
-              }
-
-              let display_name = if is_dir {
-                format!("📁 {}", file_name)
-              } else {
-                format!("🎮 {}", file_name)
-              };
-
-              let is_selected = state.selected_file.as_ref() == Some(&path);
-
-              if ui.selectable_label(is_selected, &display_name).clicked() {
-                if is_dir {
-                  state.current_path = path;
-                  state.selected_file = None;
-                  state.error_message = None;
-                } else {
-                  state.selected_file = Some(path);
-                  state.error_message = None;
-                }
-              }
-            }
-          }
-          Err(e) => {
-            ui.colored_label(
-              egui::Color32::RED,
-              format!("Error reading directory: {}", e),
-            );
-          }
-        }
-      });
-
-    ui.separator();
-
-    // Selected file display
-    if let Some(selected) = &state.selected_file {
-      ui.horizontal(|ui| {
-        ui.label("Selected:");
-        ui.monospace(selected.file_name().unwrap_or_default().to_string_lossy());
-      });
-    }
-
-    // Error message display
-    if let Some(error) = &state.error_message {
-      ui.colored_label(egui::Color32::RED, error);
-    }
-
-    ui.separator();
-
-    // Action buttons
-    ui.horizontal(|ui| {
-      let load_enabled = state.selected_file.is_some();
-
-      if ui
-        .add_enabled(load_enabled, egui::Button::new("Load ROM"))
-        .clicked()
-      {
-        if let Some(path) = &state.selected_file {
-          match fs::read(path) {
-            Ok(contents) => {
-              let name = path
-                .file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_else(|| "Unknown".to_string());
-
-              rom_writer.write(LoadRomMessage { contents, name });
-              state.show = false;
-              state.error_message = None;
-            }
-            Err(e) => {
-              state.error_message = Some(format!("Failed to read file: {}", e));
-            }
-          }
-        }
-      }
-
-      if ui.button("Cancel").clicked() {
-        state.show = false;
-      }
-    });
-
-    ui.separator();
-    ui.label("Press F1 to toggle this window");
-  });
 }
 
-fn rom_loaded_system(
-  mut rom_reader: MessageReader<LoadRomMessage>,
-  mut emulator: ResMut<Emulator>,
+/// System that updates window size and camera position when debug panel state changes
+fn camera_update_system(
+  panel_state: Res<UiPanelState>,
+  mut window_query: Query<&mut Window, With<PrimaryWindow>>,
+  mut camera_query: Query<&mut Transform, With<Camera2d>>,
 ) {
-  for msg in rom_reader.read() {
-    match emulator.0.load_rom(std::io::Cursor::new(&msg.contents)) {
-      Ok(_) => {
-        log::info!("Loaded ROM: {}", msg.name);
-      }
-      Err(e) => {
-        log::error!("Failed to load ROM {}: {}", msg.name, e);
-      }
+  if panel_state.is_changed() {
+    update_window_and_camera(panel_state.show_debug, &mut window_query, &mut camera_query);
+  }
+}
+
+/// Helper to update window size and camera position based on debug panel visibility
+fn update_window_and_camera(
+  show_debug: bool,
+  window_query: &mut Query<&mut Window, With<PrimaryWindow>>,
+  camera_query: &mut Query<&mut Transform, With<Camera2d>>,
+) {
+  let base_width = RESOLUTION.0 as f32;
+  let base_height = RESOLUTION.1 as f32 + TOP_PANEL_HEIGHT + BOTTOM_PANEL_HEIGHT;
+
+  // Vertical offset to center display between top and bottom panels
+  let vertical_offset = (BOTTOM_PANEL_HEIGHT - TOP_PANEL_HEIGHT) / 2.0;
+
+  if show_debug {
+    // Expand window to include right debug panel
+    if let Ok(mut window) = window_query.single_mut() {
+      let new_width = (base_width + RIGHT_PANEL_WIDTH) as u32;
+      let new_height = base_height as u32;
+      window.resolution.set(new_width as f32, new_height as f32);
+    }
+
+    // Shift camera left so the display remains centered in the left portion
+    // The right panel takes up RIGHT_PANEL_WIDTH, so the display area is shifted
+    if let Ok(mut camera) = camera_query.single_mut() {
+      camera.translation.x = RIGHT_PANEL_WIDTH / 2.0;
+      camera.translation.y = vertical_offset;
+    }
+  } else {
+    // Restore window to base size (no debug panel)
+    if let Ok(mut window) = window_query.single_mut() {
+      window.resolution.set(base_width, base_height);
+    }
+
+    // Center camera horizontally, keep vertical offset for top/bottom panels
+    if let Ok(mut camera) = camera_query.single_mut() {
+      camera.translation.x = 0.0;
+      camera.translation.y = vertical_offset;
     }
   }
 }
 
+/// System that maps KeyCode presses/releases to the emulator's virtual keypad.
+///
+/// Mapping:
+/// | 1 | 2 | 3 | C |  ->  1 2 3 4
+/// | Q | W | E | R |  ->  Q W E R
+/// | A | S | D | F |  ->  A S D F
+/// | Z | X | C | V |  ->  Z X C V
 fn emulator_keys_system(mut r8: ResMut<Emulator>, keyboard_input: Res<ButtonInput<KeyCode>>) {
   use r8_emulator::Key;
 

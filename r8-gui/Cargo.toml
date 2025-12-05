@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 r8-emulator = { path = "../r8-emulator" }
 r8-core = { path = "../r8-core" }
+r8-assembly = { path = "../r8-assembly" }
 log = "0.4"
 
 bevy = { version = "0.17.0"}
