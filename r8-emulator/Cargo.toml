@@ -12,4 +12,3 @@ r8-core = { path = "../r8-core" }
 log = "0.4"
 
 [dev-dependencies]
-# Add dev-dependencies (for tests) here if needed in the future

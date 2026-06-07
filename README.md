@@ -1,153 +1,80 @@
 # R8: Yet Another CHIP-8 Interpreter in Rust 😉
 
-R8 is a CHIP-8 emulator written in Rust. This repository is organized as a Cargo workspace with multiple crates, so each piece of functionality can be used independently or together to compose the application.
+R8 is a CHIP-8 emulator written in Rust. Designed to be modular so the emulator logic can be attached to any frontend, the project currently has 2 frontends: a Bevy-based one with graphical user interface and debug tools, and a simple CLI interface for those who prefer terminal interfaces. It also offers an assembly toolkit to build your own games using the emulator.
 
-- `r8-core`: core types & utilities (addresses, memory, opcodes, registers, timers, stack, errors)
-- `r8-emulator`: the emulator runtime (uses `r8-core`); suitable to build your own frontends/tools
-- `r8-assembly`: assembler & tokenizer (standalone crate, planing to build a disassembler later)
-- `r8-gui`: Bevy/egui frontend (uses `r8-emulator`, `r8-core`)
-- `r8-tui`: Terminal UI frontend (uses `r8-emulator`, `r8-assembly`, `r8-core`)
+```bash
+cargo run --release --bin gui
+cargo run --release --bin tui -- --rom roms/PONG.ch8
+```
 
 ![R8 Screenshot](img/Screnshot.png)
 
----
+# Build & Run
 
-## Highlights
+Build everything from the workspace root:
 
-- Project is now a Cargo workspace with multiple crates.
-- The previous toggling of the TUI/GUI via features is no longer required. Each frontend is a separate crate + binary:
-  - GUI binary: `gui`
-  - TUI binary: `tui`
-- Each frontend is independent; you can use `r8-emulator` alone to build a new frontend (e.g. SDL, Web, or any UI system).
-- Assembly tooling (`r8-assembly`) is a standalone crate used by frontend to assemby source files.
-
----
-
-## Prerequisites
-
-- Rust toolchain (rustup)
-- On Linux:
-  - Other dependencies your system might require for Bevy or audio backends
-- On Windows:
-  - Rust toolchain and any native dependencies for Bevy as needed
-
----
-
-## Build & Run
-
-From repo root:
-
-- Build everything:
 ```bash
-cd R8
 cargo build
 ```
 
-- Run GUI (Bevy + egui frontend):
+The GUI binary opens a file dialog to load ROMs, no CLI arguments needed. The TUI binary needs a rom path or an assembly file:
+
 ```bash
-cargo run --release --bin gui
+cargo run --release --bin tui -- --rom roms/PONG.ch8
+cargo run --release --bin tui -- --asm assembly_roms/pong.8s
 ```
 
-- Run TUI (terminal frontend):
-```bash
-cargo run --release --bin tui -- --rom path/to/rom.rom
-# or use assembled text input:
-cargo run --release --bin tui -- --asm path/to/asm.8s
-```
+Pass `-d` to the TUI for debug logging.
 
-> On a workspace, binaries can be run with `cargo run --release --bin {gui|tui}`.
-> If you prefer to target the specific crate by package, use:
-> `cargo run -p r8-gui --release --bin gui` or `cargo run -p r8-tui --release --bin tui`.
+# Use it as a library
 
----
+The project is split so you can depend on only what you need. `r8-core` is the foundation with zero dependencies: memory, registers, opcodes, timers, and stack. `r8-emulator` builds on top of it and drives the emulation loop. Together they let you embed a CHIP-8 runtime into any program.
 
-## Developer Notes
+If you only want an assembler, depend on `r8-assembly`. It takes `.8s` source text and returns ROM bytes, with `r8-core` as its only dependency.
 
-- No more feature flags are required to run GUI or TUI — each is a separate crate and binary.
-- If you want to build a new frontend, depend on `r8-emulator` in your crate's `Cargo.toml` and use the `Emulator` type to drive the emulation:
+If you want to build a new frontend, depend on `r8-emulator` and wire it up yourself:
 
-Example (minimal usage of `r8-emulator` in a new frontend):
 ```rust
 use r8_emulator::Emulator;
 
 fn main() {
     let mut emu = Emulator::new();
+    let rom = std::fs::File::open("roms/PONG.ch8").unwrap();
+    emu.load_rom(rom).unwrap();
 
-    // Load ROM from file (or another source)
-    let rom_file = std::fs::File::open("examples/pong.rom").unwrap();
-    emu.load_rom(rom_file).unwrap();
-
-    // A simple emulation loop
     loop {
-        emu.tick().unwrap(); // handles CPU tick / timers
-        // Read emu.display() to render the frame, etc.
-        // Use emu.press_key(...) / emu.release_key(...) to forward input
+        emu.tick().unwrap();
+        // emu.display() for frame data
+        // emu.press_key() / emu.release_key() for input
     }
 }
 ```
 
-- The assembler can be used from `r8-assembly` by calling `r8_assembly::assemble(...)` from other crates or tooling.
+# Dependencies
 
----
+`r8-core` and `r8-assembly` have no external dependencies beyond the Rust standard library. `r8-emulator` only adds `log`. You can build and use these without pulling in any system libraries.
 
-## Project structure
+The frontends are another story. `r8-gui` uses Bevy which pulls in OpenGL/Vulkan, Wayland, and audio system libraries. On Fedora you will need `wayland-devel` and friends. On Ubuntu it is `libwayland-dev`. `r8-tui` uses crossterm and is lighter but still needs a terminal that supports raw mode.
 
-- `r8-core/` — Core library
-- `r8-emulator/` — Emulator runtime (library)
-- `r8-assembly/` — Assembler library
-- `r8-gui/` — GUI binary (Bevy)
-- `r8-tui/` — TUI binary (crossterm)
+```bash
+# Fedora
+sudo dnf install wayland-devel libxkbcommon-devel alsa-lib-devel systemd-devel
 
----
-
-## CLI Options (TUI)
-
-The TUI CLI supports:
-
-```
-USAGE:
-    tui [OPTIONS] [--rom <ROM PATH>] [--asm <ASM FILE>]
-
-OPTIONS:
-    -d, --debug           Enable debug mode (verbose logging)
-    -r, --rom <PATH>      Load a ROM file
-    -a, --asm <PATH>      Load an assembly file and assemble it to ROM
+# Ubuntu / Debian
+sudo apt install libwayland-dev libxkbcommon-dev libasound2-dev libudev-dev
 ```
 
-For the GUI, the recorder uses a file dialog to load ROMs by default (no CLI rom path required), and you can toggle debug logging via environment or the TUI debug flags.
+# What works
 
----
+All the emulator capabilities from simple CHIP-8 work, and the GUI provides a debugger to see the registers and memory around important pointers.
 
-## Current state
+The future plan is to allow edit mode in the debugger and add support for extended versions of CHIP-8 like XO-CHIP and SuperChip.
 
-- All CHIP-8 opcodes implemented
-- Emulation (display, keyboard, timers, sound)
-- Debugging UI (GUI + helper functions)
-- Bevy GUI frontend
-- TUI frontend with CLI options
-- Assembler available as a library (`r8-assembly`)
+# References
 
----
+- [CHIP-8 reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)
+- [Mastering CHIP-8](https://github.com/mattmikolay/chip-8/wiki/Mastering-CHIP-8)
 
-## Future improvements
+# License
 
-- Add a WebAssembly target
-- Add disassembler crate or CLI
-- Add save/load emulator state
-- Improve the debug panel (memory, instruction pipeline view)
-- Add more frontends or improve modularity (e.g., headless server mode)
-
----
-
-## References
-
-- [Wikipedia article on CHIP-8](https://en.wikipedia.org/wiki/CHIP-8)
-- [CHIP-8 Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)
-- [Mastering CHIP-8](https://github.com/mattmikolay/chip-8/wiki/Mastering-CHIP%E2%80%908)
-- Public domain ROMs: https://www.zophar.net/pdroms/chip8.html
-
----
-
-## License
-
-See `LICENSE` for licensing details.
+MIT, see [LICENSE](LICENSE).

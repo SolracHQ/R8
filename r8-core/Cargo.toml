@@ -8,5 +8,3 @@ license = "MIT"
 publish = false
 
 [dependencies]
-# This crate contains only core, std-based types (addresses, memory, opcodes, registers, timers, stack, errors).
-# Add dependencies only if a specific module requires them in the future.
